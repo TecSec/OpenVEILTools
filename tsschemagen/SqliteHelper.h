@@ -45,7 +45,7 @@ public:
 	virtual ~SqliteHelper()
 	{
 	}
-	virtual tsStringBase ResolveTypeToDatabase(const tsStringBase& _typeName, int length)
+	virtual tsStringBase ResolveTypeToDatabase(const tsStringBase& _typeName, int length) override
 	{
 		tsStringBase typeName(_typeName);
 
@@ -67,7 +67,7 @@ public:
 		return "TEXT collate nocase";
 	}
 
-	virtual tsStringBase BuildSchema(const tsStringBase& schemaFile)
+	virtual tsStringBase BuildSchema(const tsStringBase& schemaFile, SchemaPartType schemaPart) override
 	{
 		tsStringBase sql = "";
 		tsStringBase name;
@@ -85,16 +85,22 @@ public:
 
 		sql += "BEGIN;\r\n";
 
+		if (schemaPart == AllParts || schemaPart == DropPart)
+		{
 		std::for_each(tableList.begin(), tableList.end(), [&sql, this](std::shared_ptr<Table> t_node) {
 			tsStringBase name = t_node->Name();
 			sql += "DROP TABLE IF EXISTS " + name + ";\r\n";
 		});
 
 		sql += "\r\n";
+		}
 
-		std::for_each(tableList.begin(), tableList.end(), [&sql, this](std::shared_ptr<Table> t_node) {
+		std::for_each(tableList.begin(), tableList.end(), [&sql, this, schemaPart](std::shared_ptr<Table> t_node) {
+			if (schemaPart == AllParts || schemaPart == CreateTablePart)
 			BuildSQLiteCreateTable(sql, t_node);
+			if (schemaPart == AllParts || schemaPart == AddKeysPart)
 			BuildSQLiteCreateTableIndices(sql, t_node);
+			if (schemaPart == AllParts || schemaPart == CreateTablePart || schemaPart == AddKeysPart)
 			sql += "\r\n";
 		});
 		//
@@ -185,6 +191,8 @@ public:
 			}
 		}
 #endif
+		if (schemaPart == AllParts || schemaPart == CreateTablePart)
+		{
 		//
 		// Now it is time to create the views
 		//
@@ -200,11 +208,14 @@ public:
 					//
 					// Insert a command separator to support limitations in ADO
 					//
-					sql += "\r\n<<<<BREAK>>>>\r\n\r\n";
-					//sql += "\r\n";
+						//sql += "\r\n<<<<BREAK>>>>\r\n\r\n";
+						sql += "\r\n";
 				}
 			});
 		});
+		}
+		if (schemaPart == AllParts || schemaPart == AddDataPart)
+		{
 		//
 		// Now it is time to load data into the tables
 		//
@@ -226,33 +237,33 @@ public:
 			});
 			sql += sourceList + ") VALUES (" + destList + ");\r\n";
 		});
-
+		}
 		sql += "COMMIT;\r\n";
 		return sql;
 	}
 
 protected:
-	virtual tsStringBase FieldStart() const
+	virtual tsStringBase FieldStart() const override
 	{
 		return "";
 	}
-	virtual tsStringBase FieldEnd() const
+	virtual tsStringBase FieldEnd() const override
 	{
 		return "";
 	}
-	virtual tsStringBase TableStart() const
+	virtual tsStringBase TableStart() const override
 	{
 		return "";
 	}
-	virtual tsStringBase TableEnd() const
+	virtual tsStringBase TableEnd() const override
 	{
 		return "";
 	}
-	virtual tsStringBase StatementTerminator() const
+	virtual tsStringBase StatementTerminator() const override
 	{
 		return ";";
 	}
-	virtual int getColumnSize(std::shared_ptr<tsXmlNode> node)
+	int getColumnSize(std::shared_ptr<tsXmlNode> node)
 	{
 		return node->Attributes().itemAsNumber("Length", 0);
 	}

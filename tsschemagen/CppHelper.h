@@ -49,7 +49,7 @@ public:
 	{
 		return gPrefix + "DataEncryptor";
 	}
-	virtual tsStringBase ResolveTypeToDatabase(const tsStringBase& _typeName, int length)
+	virtual tsStringBase ResolveTypeToDatabase(const tsStringBase& _typeName, int length) override
 	{
 		tsStringBase typeName(_typeName);
 
@@ -67,7 +67,7 @@ public:
 			return "decimal(18, 2)";
 		return "varchar(1)";
 	}
-	virtual tsStringBase BuildSchema(const tsStringBase& schemaFile)
+	virtual tsStringBase BuildSchema(const tsStringBase& schemaFile, SchemaPartType schemaPart) override
 	{
 		tsStringBase header;
 		tsStringBase source;
@@ -193,6 +193,7 @@ public:
 			AddSearchAllFunction(header, source, cntr, name, classname);
 			AddCountAllFunction(header, source, cntr, name, classname);
 			AddCountSearchAllFunction(header, source, cntr, name, classname);
+			AddAppendInsertFunction(header, source, cntr, name, classname);
 			header << "\r\n";
 			if (!cntr->ReadOnly())
 			{
@@ -231,9 +232,15 @@ public:
 				}
 			});
 
+			AddBulkDataSupport(header, source, cntr, name, classname);
+
 			AddVariables(header, source, cntr, name, classname);
 			header << "};\r\n\r\n";
 		});
+
+		// Now create the schema exporter
+		AddSchemaExporter(header, source);
+
 		header << "#endif // __" + Schema()->SymbolName() + "__\r\n";
 
 		if (!_returnHeader)
@@ -249,27 +256,27 @@ public:
 	}
 
 protected:
-	virtual tsStringBase FieldStart() const
+	virtual tsStringBase FieldStart() const override
 	{
 		return "`";
 	}
-	virtual tsStringBase FieldEnd() const
+	virtual tsStringBase FieldEnd() const override
 	{
 		return "`";
 	}
-	virtual tsStringBase TableStart() const
+	virtual tsStringBase TableStart() const override
 	{
 		return "`";
 	}
-	virtual tsStringBase TableEnd() const
+	virtual tsStringBase TableEnd() const override
 	{
 		return "`";
 	}
-	virtual tsStringBase StatementTerminator() const
+	virtual tsStringBase StatementTerminator() const override
 	{
 		return ";";
 	}
-	virtual int getColumnSize(std::shared_ptr<tsXmlNode> node)
+	int getColumnSize(std::shared_ptr<tsXmlNode> node)
 	{
 		return 0;
 	}
@@ -982,6 +989,90 @@ private:
 		source << "\r\n";
 
 		source << "    return true;\r\n";
+		source << "}\r\n\r\n";
+	}
+	void AddAppendInsertFunction(tsStringBase& header, tsStringBase& source, std::shared_ptr<ColumnContainer> cntr, const tsStringBase& name, const tsStringBase& classname)
+	{
+		std::shared_ptr<Table> table = std::dynamic_pointer_cast<Table>(cntr);
+
+		if (!table || !table->Persist())
+			return;
+
+		tsStringBase primaryKeys;
+
+		for (const std::shared_ptr<Index>& idx : cntr->Indexes())
+		{
+			if (idx->IndexType() == "primary")
+			{
+				for (const std::shared_ptr<TableColumn>& c : idx->Columns())
+				{
+					if (!primaryKeys.empty())
+						primaryKeys << ",";
+					primaryKeys << c->Name();
+				}
+			}
+		}
+
+		header << "    static bool AppendInsertScripts(TSDatabase* sourceData, TSDatabase* destFormatter, uint32_t pageSize, tscrypto::IStringWriter* appender, DSErrorList &errorList);\r\n";
+		source << "bool " + classname + "::AppendInsertScripts(TSDatabase* sourceData, TSDatabase* destFormatter, uint32_t pageSize, tscrypto::IStringWriter* appender, DSErrorList &errorList)\r\n{\r\n";
+        source << "    std::vector<" << classname << "> list;\r\n";
+        source << "    int32_t count, itemCount = 0;\r\n";
+		source << "    \r\n";
+        source << "    if (sourceData == nullptr || destFormatter == nullptr || appender == nullptr)\r\n";
+        source << "    {\r\n";
+        source << "        errorList.Add(DSError(\""<< classname<<"\", \"AppendInsertScripts\", IDS_E_GENERAL_ERROR, \"Invalid parameters\"));\r\n";
+        source << "        return false;\r\n";
+        source << "    }\r\n";
+        source << "    if (!CountAll(sourceData, count, errorList))\r\n";
+        source << "    {\r\n";
+        source << "        return false;\r\n";
+        source << "    }\r\n";
+        source << "    if (count == 0)\r\n";
+        source << "        return true;\r\n";
+        source << "    if (pageSize == 0 && count > 100)\r\n";
+        source << "        pageSize = 100;\r\n";
+        source << "    while (itemCount < count)\r\n";
+        source << "    {\r\n";
+        source << "        bool first = true;\r\n";
+		source << "    \r\n";
+        source << "        if (!LoadAll(sourceData, list, errorList, pageSize, itemCount / pageSize, \"" << primaryKeys << "\"))\r\n";
+        source << "            return false;\r\n";
+        source << "        if (list.size() == 0)\r\n";
+        source << "            return true;\r\n";
+        source << "        if (!appender->WriteString(destFormatter->fixUpSQL(list[0].buildInsertPrefixSql(destFormatter), errorList)))\r\n";
+        source << "        {\r\n";
+        source << "            errorList.Add(DSError(\"" << classname << "\", \"AppendInsertScripts\", IDS_E_GENERAL_ERROR, \"Unable to save the data\"));\r\n";
+        source << "            return false;\r\n";
+        source << "        }\r\n";
+        source << "        for (" << classname << "& data : list)\r\n";
+        source << "        {\r\n";
+        source << "            if (first)\r\n";
+        source << "            {\r\n";
+        source << "                if (!appender->WriteString(\"\\r\\n    \"))\r\n";
+        source << "                {\r\n";
+        source << "                    errorList.Add(DSError(\"" << classname << "\", \"AppendInsertScripts\", IDS_E_GENERAL_ERROR, \"Unable to save the data\"));\r\n";
+        source << "                    return false;\r\n";
+        source << "                }\r\n";
+        source << "                first = false;\r\n";
+        source << "            }\r\n";
+        source << "            else\r\n";
+        source << "            {\r\n";
+        source << "                if (!appender->WriteString(\",\\r\\n    \"))\r\n";
+        source << "                {\r\n";
+        source << "                    errorList.Add(DSError(\"" << classname << "\", \"AppendInsertScripts\", IDS_E_GENERAL_ERROR, \"Unable to save the data\"));\r\n";
+        source << "                    return false;\r\n";
+        source << "                }\r\n";
+        source << "            }\r\n";
+        source << "            if (!appender->WriteString(data.buildValuesSql(destFormatter)))\r\n";
+        source << "            {\r\n";
+        source << "                errorList.Add(DSError(\"" << classname << "\", \"AppendInsertScripts\", IDS_E_GENERAL_ERROR, \"Unable to save the data\"));\r\n";
+        source << "                return false;\r\n";
+        source << "            }\r\n";
+        source << "        }\r\n";
+        source << "        appender->WriteString(\";\\r\\n\");\r\n";
+        source << "        itemCount += list.size();\r\n";
+        source << "    }\r\n";
+        source << "    return true;\r\n";
 		source << "}\r\n\r\n";
 	}
 	void AddCountAllFunction(tsStringBase& header, tsStringBase& source, std::shared_ptr<ColumnContainer> cntr, const tsStringBase& name, const tsStringBase& classname)
@@ -2070,6 +2161,243 @@ private:
 		source << "        return nullptr;\r\n";
 		source << "    return data;\r\n";
 		source << "}\r\n\r\n";
+	}
+	void AddBulkDataSupport(tsStringBase& header, tsStringBase& source, std::shared_ptr<ColumnContainer> cntr, const tsStringBase& name, const tsStringBase& classname)
+	{
+		std::shared_ptr<Table> table = std::dynamic_pointer_cast<Table>(cntr);
+
+		if (!!table && table->Persist())
+		{
+			tsStringBase Sql;
+			tsStringBase nonNullableNames;
+			tsStringBase nonNullableValues;
+			tsStringBase nullableNames;
+			tsStringBase nullableValues;
+			tsStringBase codeBlock;
+			tsStringBase nullableCodeBlock;
+			int NNparamNumber = 0;
+			bool hasNullable = false;
+
+
+			header << "    tscrypto::tsCryptoString buildInsertPrefixSql(TSDatabase* db);\r\n";
+			source << "tscrypto::tsCryptoString " + classname + "::buildInsertPrefixSql(TSDatabase* db)\r\n{\r\n";
+			source << "    tscrypto::tsCryptoString sql;\r\n    sql << \"INSERT INTO dbo." + name + " (";
+
+			//
+			// Compute the nullable and non-nullable fields here
+			//
+			std::vector<std::shared_ptr<TableColumn> > colList = cntr->Columns();
+
+			std::for_each(colList.begin(), colList.end(), [this, &codeBlock, &Sql, &cntr, &hasNullable, &nullableNames, &nullableCodeBlock, &nonNullableNames, &nonNullableValues, &NNparamNumber](std::shared_ptr<TableColumn> c) {
+				if (c->Table().size() == 0)
+				{
+					tsStringBase childName = c->Name();
+
+					if (c->Nullable())
+					{
+						hasNullable = true;
+						if (nullableNames.size() > 0)
+						{
+							nullableNames << ", ";
+							nullableCodeBlock << "    values += \", \";\r\n";
+						}
+						nullableNames << childName;
+
+						nullableCodeBlock << "    if (exists_" + childName + "())\r\n    {\r\n";
+						nullableCodeBlock << "        values += db->ConvertDataValue(ToSql(get_" + childName + "()), " + c->GetTSFieldType() + ");\r\n";
+						nullableCodeBlock << "    }\r\n";
+						nullableCodeBlock << "    else\r\n";
+						nullableCodeBlock << "    {\r\n";
+						nullableCodeBlock << "        values += \"NULL\";\r\n";
+						nullableCodeBlock << "    }\r\n";
+
+						//source << "    _has_" + childName + " = RecordSet->row(0)->Value(\"" + childName + "\").size() > 0;\r\n");
+					}
+					else
+					{
+						if (nonNullableNames.size() > 0)
+						{
+							nonNullableNames << ", ";
+							nonNullableValues << ", ";
+						}
+						nonNullableNames << "dbo." + childName;
+						nonNullableValues << "{nn" << NNparamNumber << "}";
+						codeBlock << "    sql.Replace(tscrypto::tsCryptoString(\"{nn" << NNparamNumber << "}\"), db->ConvertDataValue(ToSql(get_" << childName << "()), " << c->GetTSFieldType() << "));\r\n";
+						NNparamNumber++;
+					}
+				}
+			});
+
+			if (hasNullable)
+			{
+				if (nonNullableNames.size() > 0)
+				{
+					nonNullableNames << ", ";
+					nonNullableValues << ", ";
+				}
+				nonNullableNames << nullableNames;
+				nonNullableValues << "{nullable}";
+			}
+			source << nonNullableNames;
+			source << ") VALUES ";
+			source << "\";\r\n    return sql;\r\n}\r\n";
+
+			header << "    tscrypto::tsCryptoString buildValuesSql(TSDatabase* db);\r\n";
+			source << "tscrypto::tsCryptoString " + classname + "::buildValuesSql(TSDatabase* db)\r\n{\r\n";
+			source << "    tscrypto::tsCryptoString sql;\r\n    sql << \"(";
+
+			source << nonNullableValues << ")\";\r\n";
+			if (hasNullable)
+			{
+				source << "    tscrypto::tsCryptoString values;\r\n\r\n";
+			}
+			source << codeBlock;
+			source << nullableCodeBlock;
+			if (hasNullable)
+			{
+				source << "    sql.Replace(tscrypto::tsCryptoString(\"{nullable}\"), values);\r\n";
+			}
+
+			source << "    return sql;\r\n}\r\n\r\n";
+		}
+	}
+	void AddSchemaExporter(tsStringBase& header, tsStringBase& source)
+	{
+		std::vector<std::shared_ptr<Table> > tableList = Schema()->AllTables();
+		tsStringBase tmp;
+
+		if (Schema()->LoaderName().empty())
+			return;
+
+		header << "class " << Schema()->ExportSymbol() << " Export" << gPrefix << "Data {\r\n";
+		header << "public:\r\n";
+		header << "    Export" << gPrefix << "Data() = delete;\r\n";
+		header << "    ~Export" << gPrefix << "Data() = delete;\r\n";
+		header << "    Export" << gPrefix << "Data(const Export" << gPrefix << "Data &obj) = delete;\r\n";
+		header << "    Export" << gPrefix << "Data &operator=(const Export" << gPrefix << "Data &obj) = delete;\r\n";
+		header << "\r\n";
+		header << "    static bool appendDropTables(std::shared_ptr<tsmod::IServiceLocator> locator, TSDatabase* sourceData, TSDatabase* destFormatter, tscrypto::IStringWriter* appender, DSErrorList &errorList);\r\n";
+		header << "    static bool appendCreateTables(std::shared_ptr<tsmod::IServiceLocator> locator, TSDatabase* sourceData, TSDatabase* destFormatter, tscrypto::IStringWriter* appender, DSErrorList &errorList);\r\n";
+		header << "    static bool appendData(std::shared_ptr<tsmod::IServiceLocator> locator, TSDatabase* sourceData, TSDatabase* destFormatter, tscrypto::IStringWriter* appender, DSErrorList &errorList);\r\n";
+		header << "    static bool appendCreateKeys(std::shared_ptr<tsmod::IServiceLocator> locator, TSDatabase* sourceData, TSDatabase* destFormatter, tscrypto::IStringWriter* appender, DSErrorList &errorList);\r\n";
+		header << "    static bool LoadScript(std::shared_ptr<tsmod::IServiceLocator> locator, const tscrypto::tsCryptoString& _scriptName, tscrypto::tsCryptoString &sql, TS_SchemaPartType part, DSErrorList &errorList);\r\n";
+		header << "};\r\n";
+
+
+		source << "bool Export" << gPrefix << "Data::appendDropTables(std::shared_ptr<tsmod::IServiceLocator> locator, TSDatabase* sourceData, TSDatabase* destFormatter, tscrypto::IStringWriter* appender, DSErrorList &errorList)\r\n";
+		source << "{\r\n";
+		source << "    tscrypto::tsCryptoString sql;\r\n";
+		source << "    tscrypto::tsCryptoString dbType;\r\n";
+		source << "    tscrypto::tsCryptoString szSchema;\r\n";
+		source << "\r\n";
+		source << "    dbType = destFormatter->DBType();\r\n";
+		source << "    szSchema = \"" << gPrefix << "\" + dbType + \".sql\";\r\n";
+		source << "    szSchema.ToLower();\r\n";
+		source << "\r\n";
+		source << "    if (!LoadScript(locator, szSchema, sql, ts_DropPart, errorList))\r\n";
+		source << "        return false;\r\n";
+		source << "    return appender->WriteString(sql);\r\n";
+		source << "}\r\n";
+		source << "bool Export" << gPrefix << "Data::appendCreateTables(std::shared_ptr<tsmod::IServiceLocator> locator, TSDatabase* sourceData, TSDatabase* destFormatter, tscrypto::IStringWriter* appender, DSErrorList &errorList)\r\n";
+		source << "{\r\n";
+		source << "    tscrypto::tsCryptoString sql;\r\n";
+		source << "    tscrypto::tsCryptoString dbType;\r\n";
+		source << "    tscrypto::tsCryptoString szSchema;\r\n";
+		source << "\r\n";
+		source << "    dbType = destFormatter->DBType();\r\n";
+		source << "    szSchema = \"" << gPrefix << "\" + dbType + \".sql\";\r\n";
+		source << "    szSchema.ToLower();\r\n";
+		source << "\r\n";
+		source << "    if (!LoadScript(locator, szSchema, sql, ts_CreateTablePart, errorList))\r\n";
+		source << "        return false;\r\n";
+		source << "    return appender->WriteString(sql);\r\n";
+		source << "}\r\n";
+		source << "bool Export" << gPrefix << "Data::appendData(std::shared_ptr<tsmod::IServiceLocator> locator, TSDatabase* sourceData, TSDatabase* destFormatter, tscrypto::IStringWriter* appender, DSErrorList &errorList)\r\n";
+		source << "{\r\n";
+        source << "    if (!appender->WriteString(destFormatter->startTransactionSql()))\r\n";
+        source << "    {\r\n";
+        source << "        errorList.Add(DSError(\"Export" << gPrefix << "Data\", \"appendData\", IDS_E_GENERAL_ERROR, \"Unable to write the export script.\"));\r\n";
+        source << "        return false;\r\n";
+        source << "    }\r\n";
+
+		for (std::shared_ptr<Table> tbl : tableList)
+		{
+			if (tbl->Persist())
+			{
+				if (!tmp.empty())
+				{
+					tmp << " ||\r\n        ";
+				}
+				else
+					tmp << "    if (";
+				tmp << "!" << tbl->Name() << "Data::AppendInsertScripts(sourceData, destFormatter, 100, appender, errorList)";
+			}
+		}
+		tmp << ")\r\n    {\r\n        return false;\r\n    }\r\n";
+		source << tmp;
+		source << "    if (!appender->WriteString(destFormatter->commitTransactionSql()))\r\n";
+		source << "    {\r\n";
+		source << "        errorList.Add(DSError(\"Export" << gPrefix << "Data\", \"appendData\", IDS_E_GENERAL_ERROR, \"Unable to write the export script.\"));\r\n";
+		source << "        return false;\r\n";
+		source << "    }\r\n";
+		source << "    return true;\r\n";
+
+		source << "}\r\n";
+		source << "bool Export" << gPrefix << "Data::appendCreateKeys(std::shared_ptr<tsmod::IServiceLocator> locator, TSDatabase* sourceData, TSDatabase* destFormatter, tscrypto::IStringWriter* appender, DSErrorList &errorList)\r\n";
+		source << "{\r\n";
+		source << "    tscrypto::tsCryptoString sql;\r\n";
+		source << "    tscrypto::tsCryptoString dbType;\r\n";
+		source << "    tscrypto::tsCryptoString szSchema;\r\n";
+		source << "\r\n";
+		source << "    dbType = destFormatter->DBType();\r\n";
+		source << "    szSchema = \"" << gPrefix << "\" + dbType + \".sql\";\r\n";
+		source << "    szSchema.ToLower();\r\n";
+		source << "\r\n";
+		source << "    if (!LoadScript(locator, szSchema, sql, ts_AddKeysPart, errorList))\r\n";
+		source << "        return false;\r\n";
+		source << "    return appender->WriteString(sql);\r\n";
+		source << "}\r\n";
+		source << "bool Export" << gPrefix << "Data::LoadScript(std::shared_ptr<tsmod::IServiceLocator> locator, const tscrypto::tsCryptoString& _scriptName, tscrypto::tsCryptoString &sql, TS_SchemaPartType part, DSErrorList &errorList)\r\n";
+		source << "{\r\n";
+        source << "    tscrypto::tsCryptoString tmp;\r\n";
+        source << "    tscrypto::tsCryptoString scriptName(_scriptName);\r\n";
+        source << "\r\n";
+        source << "    switch (part)\r\n";
+        source << "    {\r\n";
+        source << "    case ts_AllParts:\r\n";
+        source << "        break;\r\n";
+        source << "    case ts_DropPart:\r\n";
+        source << "        scriptName.Replace(\".sql\", \"_dr.sql\");\r\n";
+        source << "        break;\r\n";
+        source << "    case ts_CreateTablePart:\r\n";
+        source << "        scriptName.Replace(\".sql\", \"_ct.sql\");\r\n";
+        source << "        break;\r\n";
+        source << "    case ts_AddKeysPart:\r\n";
+        source << "        scriptName.Replace(\".sql\", \"_ak.sql\");\r\n";
+        source << "        break;\r\n";
+        source << "    case ts_AddDataPart:\r\n";
+        source << "        scriptName.Replace(\".sql\", \"_ad.sql\");\r\n";
+        source << "        break;\r\n";
+        source << "    }\r\n";
+        source << "\r\n";
+        source << "    tmp = \"we were unable to load the script called '\";\r\n";
+        source << "    tmp += scriptName;\r\n";
+        source << "    tmp += \"'\";\r\n";
+        source << "\r\n";
+        source << "    std::shared_ptr<tsmod::IResourceLoader> loader = locator->try_get_instance<tsmod::IResourceLoader>(\"" << Schema()->LoaderName() << "\");\r\n";
+        source << "    if (!loader || !loader->IsValid())\r\n";
+        source << "    {\r\n";
+        source << "        errorList.Add(DSError(\"Export" << gPrefix << "Data\", \"LoadScript\", IDS_E_CANT_UPGRADE, tmp.c_str()));\r\n";
+        source << "        return false;\r\n";
+        source << "    }\r\n";
+        source << "    sql = loader->LoadResource(scriptName.c_str()).ToUtf8String();\r\n";
+        source << "    if (sql.size() == 0)\r\n";
+        source << "    {\r\n";
+        source << "        errorList.Add(DSError(\"Export" << gPrefix << "Data\", \"LoadScript\", IDS_E_CANT_UPGRADE, tmp.c_str()));\r\n";
+        source << "        return false;\r\n";
+        source << "    }\r\n";
+        source << "    return true;\r\n";
+        source << "}\r\n";
 	}
 };
 

@@ -37,6 +37,7 @@
 class SQLHelper
 {
 public:
+	typedef enum {AllParts, DropPart, CreateTablePart, AddDataPart, AddKeysPart} SchemaPartType;
 	SQLHelper();
 	virtual ~SQLHelper();
 
@@ -55,7 +56,7 @@ public:
 	}
 	void LoadSchemaInfo(const tsStringBase& schemaFile);
 	virtual tsStringBase ResolveTypeToDatabase(const tsStringBase& typeName, int length) = 0;
-	virtual tsStringBase BuildSchema(const tsStringBase& schemaFile) { return ""; }
+	virtual tsStringBase BuildSchema(const tsStringBase& schemaFile, SchemaPartType schemaPart) { return ""; }
 
 protected:
 	// typeof ResolveType(const tsStringBase& typeName);

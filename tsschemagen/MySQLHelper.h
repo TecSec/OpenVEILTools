@@ -43,7 +43,7 @@ public:
 	virtual ~MySqlHelper()
 	{
 	}
-	virtual tsStringBase ResolveTypeToDatabase(const tsStringBase& typeName, int length)
+	virtual tsStringBase ResolveTypeToDatabase(const tsStringBase& typeName, int length) override
 	{
 		tsStringBase tmp;
 
@@ -63,7 +63,7 @@ public:
 			return "varchar(1)";
 		return tmp;
 	}
-	virtual tsStringBase BuildSchema(const tsStringBase& schemaFile)
+	virtual tsStringBase BuildSchema(const tsStringBase& schemaFile, SchemaPartType schemaPart) override
 	{
 		tsStringBase sql = "";
 		tsStringBase name;
@@ -78,21 +78,30 @@ public:
 
 		LoadSchemaInfo(schemaFile);
 
-		sql += "CREATE DATABASE IF NOT EXISTS [[DATABASE]];\r\n";
-		sql += "USE [[DATABASE]];\r\n\r\n";
-
 		tableList = Schema()->PersistedTables();
 		if (tableList.size() < 1)
 			throw std::runtime_error("Unable to locate schema information for the database tables");
 
-		std::for_each(tableList.begin(), tableList.end(), [this, &sql, &name](std::shared_ptr<Table> t_node){
+		if (schemaPart == AllParts || schemaPart == DropPart)
+		{
+			sql += "CREATE DATABASE IF NOT EXISTS [[DATABASE]];\r\n";
+			sql += "USE [[DATABASE]];\r\n\r\n";
+
+			std::for_each(tableList.begin(), tableList.end(), [this, &sql, &name](std::shared_ptr<Table> t_node) {
 			name = t_node->Name();
 			sql += "DROP TABLE IF EXISTS `" + name + "`;\r\n";
 		});
-
 		sql += "\r\n\r\n";
+		}
 
-		std::for_each(tableList.begin(), tableList.end(), [this, &sql, &name, &type, &length, &primaryKey](std::shared_ptr<Table> t_node){
+		if (schemaPart == AllParts || schemaPart == CreateTablePart)
+		{
+			if (schemaPart == CreateTablePart)
+			{
+				sql += "CREATE DATABASE IF NOT EXISTS [[DATABASE]];\r\n";
+				sql += "USE [[DATABASE]];\r\n\r\n";
+			}
+			std::for_each(tableList.begin(), tableList.end(), [this, &sql, &name, &type, &length, &primaryKey](std::shared_ptr<Table> t_node) {
 			int colCount = 0;
 
 			name = t_node->Name();
@@ -101,7 +110,7 @@ public:
 			
 			std::vector<std::shared_ptr<TableColumn> > colList = t_node->Columns();
 
-			std::for_each(colList.begin(), colList.end(), [this, &sql, &name, &colCount, &type, &length](std::shared_ptr<TableColumn> node){
+				std::for_each(colList.begin(), colList.end(), [this, &sql, &name, &colCount, &type, &length](std::shared_ptr<TableColumn> node) {
 				if (node->Table().size() == 0)
 				{
 					if (colCount > 0)
@@ -122,7 +131,7 @@ public:
 			primaryKey = "";
 			std::vector<std::shared_ptr<Index> > idxList = t_node->PrimaryKeys();
 
-			std::for_each(idxList.begin(), idxList.end(), [this, &sql, &name, &primaryKey](std::shared_ptr<Index> p_node){
+				std::for_each(idxList.begin(), idxList.end(), [this, &sql, &name, &primaryKey](std::shared_ptr<Index> p_node) {
 				if (primaryKey.size() > 0)
 					primaryKey += ", ";
 				primaryKey += "`" + p_node->Name() + "` ";
@@ -138,7 +147,7 @@ public:
 
 			idxList = t_node->NonPrimaryKeys();
 
-			std::for_each(idxList.begin(), idxList.end(), [this, &sql, &name, &primaryKey, &colCount](std::shared_ptr<Index> i_node){
+				std::for_each(idxList.begin(), idxList.end(), [this, &sql, &name, &primaryKey, &colCount](std::shared_ptr<Index> i_node) {
 				if (i_node->IndexType().ToLower() == "temporary")
 					return;
 				name = i_node->Name();
@@ -147,7 +156,7 @@ public:
 
 				std::vector<std::shared_ptr<TableColumn> > colList = i_node->Columns();
 
-				std::for_each(colList.begin(), colList.end(), [this, &sql, &name, &primaryKey](std::shared_ptr<TableColumn> f_node){
+					std::for_each(colList.begin(), colList.end(), [this, &sql, &name, &primaryKey](std::shared_ptr<TableColumn> f_node) {
 					if (primaryKey.size() > 0)
 						primaryKey += ", ";
 					primaryKey += "`" + f_node->Name() + "` ";
@@ -163,13 +172,16 @@ public:
 
 			sql += ") TYPE=InnoDB;\r\n\r\n";
 		});
+		}
 
 		//
 		// Now it is time to create the relationships
 		//
 		std::vector<std::shared_ptr<Relation> > idxList = Schema()->PersistedRelations();
 
-		std::for_each(idxList.begin(), idxList.end(), [this, &sql, &sourceList, &destList](std::shared_ptr<Relation> r_node){
+		if (schemaPart == AllParts || schemaPart == AddKeysPart)
+		{
+			std::for_each(idxList.begin(), idxList.end(), [this, &sql, &sourceList, &destList](std::shared_ptr<Relation> r_node) {
 			sourceList = "";
 			destList = "";
 
@@ -196,18 +208,21 @@ public:
 				sql += "  ON DELETE RESTRICT ON UPDATE RESTRICT;\r\n\r\n";
 			}
 		});
+		}
 		//
 		// Now it is time to load data into the tables
 		//
 		std::vector<std::shared_ptr<DataRow> > rowList = Schema()->AllDataRows();
 
-		std::for_each(rowList.begin(), rowList.end(), [&sql, this, &sourceList, &destList](std::shared_ptr<DataRow> r_node){
+		if (schemaPart == AllParts || schemaPart == AddDataPart)
+		{
+			std::for_each(rowList.begin(), rowList.end(), [&sql, this, &sourceList, &destList](std::shared_ptr<DataRow> r_node) {
 			sourceList = "";
 			destList = "";
 			sql += "INSERT INTO " + TableStart() + r_node->Table()->Name() + TableEnd() + "(";
 
 			const tsAttributeMap& map = r_node->Values();
-			map.foreach([&sourceList, &destList, this](const __tsAttributeMapItem& item){
+				map.foreach([&sourceList, &destList, this](const __tsAttributeMapItem& item) {
 				if (sourceList.size() > 0)
 				{
 					sourceList += ", ";
@@ -220,35 +235,38 @@ public:
 			sql += sourceList + ") VALUES (" + destList + ");\r\n";
 			//					sql += "<<<<BREAK>>>>\r\n";
 		});
+		}
 
+		if (schemaPart == AllParts || schemaPart == AddKeysPart)
+		{
 		sql += "GRANT ALL PRIVILEGES ON [[DATABASE]].* TO " + uid + "@localhost IDENTIFIED BY '" + pwd + "';\r\n";
 		sql += "GRANT ALL PRIVILEGES ON [[DATABASE]].* TO " + uid + "@'%' IDENTIFIED BY '" + pwd + "';\r\n";
-
+		}
 		return sql;
 	}
 
 protected:
-	virtual tsStringBase FieldStart() const
+	virtual tsStringBase FieldStart() const override
 	{
 		return "`";
 	}
-	virtual tsStringBase FieldEnd() const
+	virtual tsStringBase FieldEnd() const override
 	{
 		return "`";
 	}
-	virtual tsStringBase TableStart() const
+	virtual tsStringBase TableStart() const override
 	{
 		return "`";
 	}
-	virtual tsStringBase TableEnd() const
+	virtual tsStringBase TableEnd() const override
 	{
 		return "`";
 	}
-	virtual tsStringBase StatementTerminator() const
+	virtual tsStringBase StatementTerminator() const override
 	{
 		return ";";
 	}
-	virtual int getColumnSize(std::shared_ptr<tsXmlNode> node)
+	int getColumnSize(std::shared_ptr<tsXmlNode> node)
 	{
 		if (node->Attributes().item("Type") == "System.Guid")
 			return 36;

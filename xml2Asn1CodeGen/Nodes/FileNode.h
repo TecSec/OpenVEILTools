@@ -556,7 +556,7 @@ protected:
 		Export()->WriteLine("<Asn1Export xmlns=\"http://schemas.tecsec.com/xml2asn1codegen/2015\">");
 		Export()->indent();
 		WriteFileHeader(Export(), _ExportFilename);
-		Export()->WriteLine("<Include Name=\"" + _headerPrefix + _HeaderFilename + "\"/>");
+		//Export()->WriteLine("<Include Name=\"" + _headerPrefix + _HeaderFilename + "\"/>");
 		return true;
 
 	}

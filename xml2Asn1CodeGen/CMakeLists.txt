@@ -161,7 +161,6 @@ SOURCE_GROUP("Nodes" FILES
 	)
 
 add_precompiled_header(xml2Asn1CodeGen stdafx.h FORCEINCLUDE SOURCE_CXX stdafx.cpp)
-target_compile_definitions(xml2Asn1CodeGen PRIVATE $<$<NOT:$<COMPILE_FEATURES:cxx_constexpr>>:USE_CONST>)
 set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/xml2Asn1CodeGen.rc PROPERTIES COMPILE_DEFINITIONS RC_COMPILED)
 # add_dependencies(xml2Asn1CodeGen toolsBase)
 # SetCxxExeTargetProperties_sdk(xml2Asn1CodeGen)

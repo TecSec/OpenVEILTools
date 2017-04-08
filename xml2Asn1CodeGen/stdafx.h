@@ -48,7 +48,7 @@
 extern tsStringBase gOutputPath;
 extern tsStringBase gInputPath;
 extern tsStringBase gExportPath;
-
+extern bool gUseConst;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 /// <summary>A macro that will reverse the byte order of a 2 byte entity regardless of the byte order of the machine</summary>

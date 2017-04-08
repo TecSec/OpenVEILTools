@@ -83,7 +83,10 @@ bool NamedInt::WriteForwardReference(std::shared_ptr<FileNode> files)
 				{
 					if (item->Description().size() > 0)
 						files->Header()->WriteLine(item->Description());
-#if !defined(USE_CONST) || defined(HAVE_CONSTEXPR)
+					if (!gUseConst)
+					{
+						
+						files->Header()->WriteLine("#ifdef HAVE_CONSTEXPR");
 					if (item->Value().size() == 0)
 					{
 						if (prior.empty())
@@ -93,7 +96,7 @@ bool NamedInt::WriteForwardReference(std::shared_ptr<FileNode> files)
 					}
 					else
 						files->Header()->WriteLine("constexpr " + BaseType() + " " + item->Name() + " = " + item->Value() + ";");
-#else
+						files->Header()->WriteLine("#else");
 					if (item->Value().size() == 0)
 					{
 						if (prior.empty())
@@ -103,7 +106,20 @@ bool NamedInt::WriteForwardReference(std::shared_ptr<FileNode> files)
 					}
 					else
 						files->Header()->WriteLine("const " + BaseType() + " " + item->Name() + " = " + item->Value() + ";");
-#endif
+						files->Header()->WriteLine("#endif // HAVE_CONSTEXPR");
+					}
+					else
+					{
+						if (item->Value().size() == 0)
+						{
+							if (prior.empty())
+								files->Header()->WriteLine("const " + BaseType() + " " + item->Name() + " = 0;");
+							else
+								files->Header()->WriteLine("const " + BaseType() + " " + item->Name() + " = " + prior + " + 1;");
+						}
+						else
+							files->Header()->WriteLine("const " + BaseType() + " " + item->Name() + " = " + item->Value() + ";");
+					}
 					prior = item->Name();
 				}
 			}

@@ -59,6 +59,7 @@ void Schema::OnConstructionFinished()
 	Subminor(doc->Attributes().itemAsNumber("Subminor", 0));
 	SymbolName(doc->Attributes().item("SymbolName"));
 	ExportSymbol(doc->Attributes().item("ExportSymbol"));
+	LoaderName(doc->Attributes().item("LoaderName"));
 	nodeList = doc->ChildrenByName("CppInclude");
 	std::for_each(nodeList.begin(), nodeList.end(), [this, &includes](std::shared_ptr<tsXmlNode> child){
 		includes.push_back(CppInclude::Create(std::dynamic_pointer_cast<Schema>(_me.lock()), child));

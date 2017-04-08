@@ -55,6 +55,7 @@ public:
 	int Subminor() const { return _Subminor; }
 	tsStringBase SymbolName() const { return _SymbolName; }
 	tsStringBase ExportSymbol() const { return _ExportSymbol; }
+	tsStringBase LoaderName() const { return _LoaderName; }
 	const std::vector<std::shared_ptr<CppInclude> > CppIncludes() const { return _CppIncludes; }
 	const std::vector<std::shared_ptr<ColumnContainer> > AllContainers() const { return _AllContainers; }
 	const std::vector<std::shared_ptr<ColumnContainer> > PersistedContainers() const { return _PersistedContainers; }
@@ -83,6 +84,7 @@ private:
 	int _Subminor;
 	tsStringBase _SymbolName;
 	tsStringBase _ExportSymbol;
+	tsStringBase _LoaderName;
 	std::vector<std::shared_ptr<CppInclude> > _CppIncludes;
 	std::vector<std::shared_ptr<ColumnContainer> > _AllContainers;
 	std::vector<std::shared_ptr<ColumnContainer> > _PersistedContainers;
@@ -105,6 +107,7 @@ private:
 	void Subminor(int setTo) { _Subminor = setTo; }
 	void SymbolName(const tsStringBase& setTo) { _SymbolName = setTo; }
 	void ExportSymbol(const tsStringBase& setTo) { _ExportSymbol = setTo; }
+	void LoaderName(const tsStringBase& setTo) { _LoaderName = setTo; }
 	void CppIncludes(std::vector<std::shared_ptr<CppInclude> > setTo) { _CppIncludes = setTo; }
 	void AllContainers(std::vector<std::shared_ptr<ColumnContainer> > setTo) { _AllContainers = setTo; }
 	void PersistedContainers(std::vector<std::shared_ptr<ColumnContainer> > setTo) { _PersistedContainers = setTo; }

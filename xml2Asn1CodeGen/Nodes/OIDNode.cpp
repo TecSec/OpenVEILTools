@@ -84,11 +84,20 @@ void IDNode::WriteOID(std::shared_ptr<FileNode> files)
 		tsStringBase tmp = Description();
 		if (tmp.size() > 0)
 			files->Header()->WriteLine(tmp);
-#if !defined(USE_CONST) || defined(HAVE_CONSTEXPR)
+
+
+		if (!gUseConst)
+		{
+
+			files->Header()->WriteLine("#ifdef HAVE_CONSTEXPR");
 		files->Header()->WriteLine("constexpr const char* " + Name() + " = \"" + Value() + "\";");
-#else
+			files->Header()->WriteLine("#else");
 		files->Header()->WriteLine("static const char* " + Name() + " = \"" + Value() + "\";");
-#endif
+			files->Header()->WriteLine("#endif // HAVE_CONSTEXPR");
+		}
+		else
+			files->Header()->WriteLine("static const char* " + Name() + " = \"" + Value() + "\";");
+
 	}
 }
 

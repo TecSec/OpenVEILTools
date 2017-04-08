@@ -84,11 +84,11 @@ static std::vector<tsStringBase> SplitString(const tsStringBase& src, const tsSt
 	}
 	return parts;
 }
-static void SendOutputToFiles(std::shared_ptr<SQLHelper> builder, std::vector<tsStringBase> fileNames, const tsStringBase& schemaFilename)
+static void SendOutputToFiles(std::shared_ptr<SQLHelper> builder, std::vector<tsStringBase> fileNames, const tsStringBase& schemaFilename, SQLHelper::SchemaPartType schemaPart)
 {
 	tsStringBase sql;
 
-	sql = builder->BuildSchema(schemaFilename);
+	sql = builder->BuildSchema(schemaFilename, schemaPart);
 
 	std::vector<tsStringBase> parts = SplitString(sql, "<<<<NEXT FILE>>>>");
 
@@ -120,28 +120,92 @@ static bool ProcessFile(const char *filename)
 			builder = std::shared_ptr<SQLHelper>(dynamic_cast<SQLHelper*>(new SqlServerHelper()));
 			fileNames.clear();
 			fileNames.push_back(gOutputPath + ToLower(gPrefix) + "mssql.sql");
-			SendOutputToFiles(builder, fileNames, filename);
+			SendOutputToFiles(builder, fileNames, filename, SQLHelper::AllParts);
+
+			fileNames.clear();
+			fileNames.push_back(gOutputPath + ToLower(gPrefix) + "mssql_dr.sql");
+			SendOutputToFiles(builder, fileNames, filename, SQLHelper::DropPart);
+
+			fileNames.clear();
+			fileNames.push_back(gOutputPath + ToLower(gPrefix) + "mssql_ct.sql");
+			SendOutputToFiles(builder, fileNames, filename, SQLHelper::CreateTablePart);
+
+			fileNames.clear();
+			fileNames.push_back(gOutputPath + ToLower(gPrefix) + "mssql_ad.sql");
+			SendOutputToFiles(builder, fileNames, filename, SQLHelper::AddDataPart);
+
+			fileNames.clear();
+			fileNames.push_back(gOutputPath + ToLower(gPrefix) + "mssql_ak.sql");
+			SendOutputToFiles(builder, fileNames, filename, SQLHelper::AddKeysPart);
 		}
 		if (gBuildType == "SQLITE" || gBuildType == "SQL" || gBuildType == "ALL")
 		{
 			builder = std::shared_ptr<SQLHelper>(dynamic_cast<SQLHelper*>(new SqliteHelper()));
 			fileNames.clear();
 			fileNames.push_back(gOutputPath + ToLower(gPrefix) + "sqlite.sql");
-			SendOutputToFiles(builder, fileNames, filename);
+			SendOutputToFiles(builder, fileNames, filename, SQLHelper::AllParts);
+
+			fileNames.clear();
+			fileNames.push_back(gOutputPath + ToLower(gPrefix) + "sqlite_dr.sql");
+			SendOutputToFiles(builder, fileNames, filename, SQLHelper::DropPart);
+
+			fileNames.clear();
+			fileNames.push_back(gOutputPath + ToLower(gPrefix) + "sqlite_ct.sql");
+			SendOutputToFiles(builder, fileNames, filename, SQLHelper::CreateTablePart);
+
+			fileNames.clear();
+			fileNames.push_back(gOutputPath + ToLower(gPrefix) + "sqlite_ad.sql");
+			SendOutputToFiles(builder, fileNames, filename, SQLHelper::AddDataPart);
+
+			fileNames.clear();
+			fileNames.push_back(gOutputPath + ToLower(gPrefix) + "sqlite_ak.sql");
+			SendOutputToFiles(builder, fileNames, filename, SQLHelper::AddKeysPart);
 		}
 		if (gBuildType == "ORACLE" || gBuildType == "SQL" || gBuildType == "ALL")
 		{
 			builder = std::shared_ptr<SQLHelper>(dynamic_cast<SQLHelper*>(new OracleHelper()));
 			fileNames.clear();
 			fileNames.push_back(gOutputPath + ToLower(gPrefix) + "oracle.sql");
-			SendOutputToFiles(builder, fileNames, filename);
+			SendOutputToFiles(builder, fileNames, filename, SQLHelper::AllParts);
+
+			fileNames.clear();
+			fileNames.push_back(gOutputPath + ToLower(gPrefix) + "oracle_dr.sql");
+			SendOutputToFiles(builder, fileNames, filename, SQLHelper::DropPart);
+
+			fileNames.clear();
+			fileNames.push_back(gOutputPath + ToLower(gPrefix) + "oracle_ct.sql");
+			SendOutputToFiles(builder, fileNames, filename, SQLHelper::CreateTablePart);
+
+			fileNames.clear();
+			fileNames.push_back(gOutputPath + ToLower(gPrefix) + "oracle_ad.sql");
+			SendOutputToFiles(builder, fileNames, filename, SQLHelper::AddDataPart);
+
+			fileNames.clear();
+			fileNames.push_back(gOutputPath + ToLower(gPrefix) + "oracle_ak.sql");
+			SendOutputToFiles(builder, fileNames, filename, SQLHelper::AddKeysPart);
 		}
 		if (gBuildType == "MYSQL" || gBuildType == "SQL" || gBuildType == "ALL")
 		{
 			builder = std::shared_ptr<SQLHelper>(dynamic_cast<SQLHelper*>(new MySqlHelper()));
 			fileNames.clear();
 			fileNames.push_back(gOutputPath + ToLower(gPrefix) + "mysql.sql");
-			SendOutputToFiles(builder, fileNames, filename);
+			SendOutputToFiles(builder, fileNames, filename, SQLHelper::AllParts);
+
+			fileNames.clear();
+			fileNames.push_back(gOutputPath + ToLower(gPrefix) + "mysql_dr.sql");
+			SendOutputToFiles(builder, fileNames, filename, SQLHelper::DropPart);
+
+			fileNames.clear();
+			fileNames.push_back(gOutputPath + ToLower(gPrefix) + "mysql_ct.sql");
+			SendOutputToFiles(builder, fileNames, filename, SQLHelper::CreateTablePart);
+
+			fileNames.clear();
+			fileNames.push_back(gOutputPath + ToLower(gPrefix) + "mysql_ad.sql");
+			SendOutputToFiles(builder, fileNames, filename, SQLHelper::AddDataPart);
+
+			fileNames.clear();
+			fileNames.push_back(gOutputPath + ToLower(gPrefix) + "mysql_ak.sql");
+			SendOutputToFiles(builder, fileNames, filename, SQLHelper::AddKeysPart);
 		}
 		if (gBuildType == "H" || gBuildType == "CPP" || gBuildType == "CODE" || gBuildType == "ALL")
 		{
@@ -151,7 +215,7 @@ static bool ProcessFile(const char *filename)
 				fileNames.push_back(gOutputPath + gPrefix + "_Data.h");
 			if (gBuildType != "H")
 				fileNames.push_back(gOutputPath + gPrefix + "_Data.cpp");
-			SendOutputToFiles(builder, fileNames, filename);
+			SendOutputToFiles(builder, fileNames, filename, SQLHelper::AllParts);
 		}
 		printf("The output file is stored in '%s'.\n", gOutputPath.c_str());
 		return true;

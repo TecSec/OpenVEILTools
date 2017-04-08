@@ -44,7 +44,7 @@ public:
 	{
 	}
 
-	virtual tsStringBase ResolveTypeToDatabase(const tsStringBase& typeName, int length)
+	virtual tsStringBase ResolveTypeToDatabase(const tsStringBase& typeName, int length) override
 	{
 		if (typeName == "System.String")
 		{
@@ -89,7 +89,7 @@ public:
 			return "[varchar] (1)";
 		}
 	}
-	virtual tsStringBase BuildSchema(const tsStringBase& schemaFile)
+	virtual tsStringBase BuildSchema(const tsStringBase& schemaFile, SchemaPartType schemaPart) override
 	{
 		tsStringBase sql;
 		std::vector<std::shared_ptr<Relation> > nodeList;
@@ -101,10 +101,15 @@ public:
 
 		m_state = 0;
 		LoadSchemaInfo(schemaFile);
+		nodeList = Schema()->PersistedRelations();
+		viewList = Schema()->PersistedViews();
+		tableList = Schema()->PersistedTables();
+
+		if (schemaPart == AllParts || schemaPart == DropPart)
+		{
 		//
 		// First retrieve the list of relationships from the schema file
 		//
-		nodeList = Schema()->PersistedRelations();
 		if (nodeList.size() > 0)
 		{
 			//
@@ -122,7 +127,6 @@ public:
 		//
 		// And remove the views from the current database
 		//
-		viewList = Schema()->PersistedViews();
 		std::for_each(viewList.begin(), viewList.end(), [&sql, this](std::shared_ptr<View> v_node) {
 			tsStringBase name = v_node->Name();
 			sql << "if exists (select * from dbo.sysobjects where id = object_id(N'" + TableStart() + name + TableEnd() + "') and OBJECTPROPERTY(id, N'IsView') = 1)\r\n";
@@ -132,7 +136,6 @@ public:
 		//
 		// Now retrieve the table list
 		//
-		tableList = Schema()->PersistedTables();
 		if (tableList.size() < 1)
 			throw std::runtime_error("Unable to locate schema information for the database tables");
 		//
@@ -174,11 +177,14 @@ public:
 		//
 		// Insert a command separator to support limitations in ADO
 		//
+			if (schemaPart == AllParts)
 		sql << "\r\n<<<<BREAK>>>>\r\n\r\n";
-
+		}
 		//
 		// Now create the tables
 		//
+		if (schemaPart == AllParts || schemaPart == CreateTablePart)
+		{
 		std::for_each(tableList.begin(), tableList.end(), [&sql, this](std::shared_ptr<Table> t_node) {
 			int colCount = 0;
 			tsStringBase defValue;
@@ -221,7 +227,29 @@ public:
 		// Insert a command separator to support limitations in ADO
 		//
 		sql << "\r\n<<<<BREAK>>>>\r\n\r\n";
+			//
+			// Now it is time to create the views
+			//
+			std::for_each(viewList.begin(), viewList.end(), [&sql, this](std::shared_ptr<View> v_node) {
+				std::vector<std::shared_ptr<DatabaseView> > dbViewList = v_node->DatabaseViews();
 
+				std::for_each(dbViewList.begin(), dbViewList.end(), [&sql, this](std::shared_ptr<DatabaseView> vc_node) {
+					if (vc_node->dbName().ToLower() == "sqlserverview")
+					{
+						sql << vc_node->Code();
+						//
+						// Insert a command separator to support limitations in ADO
+						//
+						sql << "\r\n<<<<BREAK>>>>\r\n\r\n";
+					}
+				});
+			});
+			if (schemaPart == AllParts)
+				sql << "\r\n<<<<BREAK>>>>\r\n\r\n";
+		}
+
+		if (schemaPart == AllParts || schemaPart == AddKeysPart)
+		{
 		//
 		// Now create the primary keys
 		//$$$
@@ -366,25 +394,6 @@ public:
 		// Insert a command separator to support limitations in ADO
 		//
 		sql << "\r\n<<<<BREAK>>>>\r\n\r\n";
-
-		//
-		// Now it is time to create the views
-		//
-		std::for_each(viewList.begin(), viewList.end(), [&sql, this](std::shared_ptr<View> v_node) {
-			std::vector<std::shared_ptr<DatabaseView> > dbViewList = v_node->DatabaseViews();
-
-			std::for_each(dbViewList.begin(), dbViewList.end(), [&sql, this](std::shared_ptr<DatabaseView> vc_node) {
-				if (vc_node->dbName().ToLower() == "sqlserverview")
-				{
-					sql << vc_node->Code();
-					//
-					// Insert a command separator to support limitations in ADO
-					//
-					sql << "\r\n<<<<BREAK>>>>\r\n\r\n";
-				}
-			});
-		});
-
 		sql << "SET QUOTED_IDENTIFIER ON;\r\n";
 		sql << "SET ANSI_NULLS ON;\r\n";
 		//
@@ -408,10 +417,13 @@ public:
 				sql << "\r\n<<<<BREAK>>>>\r\n\r\n";
 			}
 		});
+		}
 
 		//
 		// Now it is time to load data into the tables
 		//
+		if (schemaPart == AllParts || schemaPart == AddDataPart)
+		{
 		std::vector<std::shared_ptr<DataRow> > rowList = Schema()->AllDataRows();
 
 		std::for_each(rowList.begin(), rowList.end(), [&sql, this](std::shared_ptr<DataRow> r_node) {
@@ -431,6 +443,7 @@ public:
 			});
 			sql << sourceList + ") VALUES (" + destList + ")\r\n" + StatementTerminator() + "\r\n";
 		});
+		}
 		////
 		////            sql += "GRANT ALL PRIVILEGES ON [[DATABASE]].* TO " + uid + "@localhost IDENTIFIED BY '" + pwd + "';\r\n";
 		////            sql += "GRANT ALL PRIVILEGES ON [[DATABASE]].* TO " + uid + "@'%' IDENTIFIED BY '" + pwd + "';\r\n";
@@ -439,32 +452,30 @@ public:
 	}
 
 protected:
-	virtual tsStringBase FieldStart() const
+	virtual tsStringBase FieldStart() const override
 	{
 		return "[";
 	}
-	virtual tsStringBase FieldEnd() const
+	virtual tsStringBase FieldEnd() const override
 	{
 		return "]";
 	}
-	virtual tsStringBase TableStart() const
+	virtual tsStringBase TableStart() const override
 	{
 		return "[dbo].[";
 	}
-	virtual tsStringBase TableEnd() const
+	virtual tsStringBase TableEnd() const override
 	{
 		return "]";
 	}
-	virtual tsStringBase StatementTerminator() const
+	virtual tsStringBase StatementTerminator() const override
 	{
 		return ";";
 	}
-	virtual int getColumnSize(std::shared_ptr<tsXmlNode> node)
+	int getColumnSize(std::shared_ptr<tsXmlNode> node)
 	{
 		return node->Attributes().itemAsNumber("Length", 0);
 	}
-
-
 
 private:
 	int m_state;

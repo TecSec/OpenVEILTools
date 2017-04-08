@@ -38,9 +38,10 @@
 tsStringBase gOutputPath;
 tsStringBase gInputPath;
 tsStringBase gExportPath;
+bool gUseConst = false;
 
 enum {
-	OPT_HELP = 0, OPT_OUTPUT, OPT_EXPORTS
+	OPT_HELP = 0, OPT_OUTPUT, OPT_EXPORTS, OPT_USE_CONST
 };
 
 CSimpleOpt::SOption g_rgOptions1[] =
@@ -53,12 +54,14 @@ CSimpleOpt::SOption g_rgOptions1[] =
 	{ OPT_OUTPUT, "--output", SO_REQ_SEP },
 	{ OPT_EXPORTS, "-e", SO_REQ_SEP },
 	{ OPT_EXPORTS, "--exports", SO_REQ_SEP },
+	{ OPT_USE_CONST, "-c", SO_NONE },
+	{ OPT_USE_CONST, "--use-const", SO_NONE },
 	SO_END_OF_OPTIONS
 };
 
 static void Usage()
 {
-	printf("USAGE:  -o=dir or --output=dir -e=dir or --exports=dir fileToProcess [filetoprocess]*\n");
+	printf("USAGE:  -o=dir or --output=dir -e=dir or --exports=dir fileToProcess   -c or --use-const   [filetoprocess]*\n");
 }
 
 static void ProcessFile(const char *filename)
@@ -367,6 +370,10 @@ int main(int argc, char* argv[])
 				gExportPath = args.OptionArg();
 				if (gExportPath.size() > 0 && gExportPath[gExportPath.size() - 1] != XP_PATH_SEP_CHAR)
 					gExportPath.append(XP_PATH_SEP_STR);
+			}
+			else if (args.OptionId() == OPT_USE_CONST)
+			{
+				gUseConst = true;
 			}
 		}
 	}
