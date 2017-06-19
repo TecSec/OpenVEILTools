@@ -83,6 +83,12 @@ public:
 		if (tableList.size() < 1)
 			throw std::runtime_error("Unable to locate schema information for the database tables");
 
+        sql += "-- Generated file\n";
+
+        if (schemaPart == AllParts || schemaPart == CreateTablePart)
+        {
+            sql += "PRAGMA foreign_keys = true;\r\n";
+        }
 		sql += "BEGIN;\r\n";
 
 		if (schemaPart == AllParts || schemaPart == DropPart)

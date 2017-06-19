@@ -1070,7 +1070,7 @@ private:
         source << "            }\r\n";
         source << "        }\r\n";
         source << "        appender->WriteString(\";\\r\\n\");\r\n";
-        source << "        itemCount += list.size();\r\n";
+        source << "        itemCount += (int)list.size();\r\n";
         source << "    }\r\n";
         source << "    return true;\r\n";
 		source << "}\r\n\r\n";

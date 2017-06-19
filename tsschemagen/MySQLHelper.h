@@ -82,6 +82,8 @@ public:
 		if (tableList.size() < 1)
 			throw std::runtime_error("Unable to locate schema information for the database tables");
 
+        sql += "-- Generated file\n";
+
 		if (schemaPart == AllParts || schemaPart == DropPart)
 		{
 			sql += "CREATE DATABASE IF NOT EXISTS [[DATABASE]];\r\n";

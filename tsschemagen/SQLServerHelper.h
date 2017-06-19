@@ -105,6 +105,8 @@ public:
 		viewList = Schema()->PersistedViews();
 		tableList = Schema()->PersistedTables();
 
+        sql += "-- Generated file\n";
+
 		if (schemaPart == AllParts || schemaPart == DropPart)
 		{
 		//

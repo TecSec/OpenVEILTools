@@ -88,6 +88,8 @@ public:
 		tableList = Schema()->PersistedTables();
 		viewList = Schema()->PersistedViews();
 
+        sql += "-- Generated file\n";
+
 		if (schemaPart == AllParts || schemaPart == DropPart)
 		{
 		if (nodeList.size() > 1)
