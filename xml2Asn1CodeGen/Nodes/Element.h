@@ -106,6 +106,8 @@ public:
 	}
 	tsStringBase CppType() const { return _cppType; }
 	void CppType(const tsStringBase& setTo) { _cppType = setTo; }
+    tsStringBase C_Type() const { return _cType; }
+    void C_Type(const tsStringBase& setTo) { _cType = setTo; }
 	virtual tsStringBase JSONName() const { return _jsonName; }
 	virtual void JSONName(const tsStringBase& setTo) { _jsonName = setTo; }
 	virtual tsStringBase EncodedType() const { return _encodedType; }
@@ -206,6 +208,7 @@ protected:
 	tsStringBase _structureName;
 	tsStringBase _PODstructureName;
 	tsStringBase _cppType;
+	tsStringBase _cType;
 	tsStringBase _jsonName;
 	tsStringBase _encodedType;
 	tsStringBase _encodedAccessor;

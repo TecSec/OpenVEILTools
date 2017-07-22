@@ -29,44 +29,5 @@
 //
 // Written by Roger Butler
 
-#pragma once
-
-#ifdef _WIN32
-#include "targetver.h"
-#endif
-
-#include "core/compilerconfig.h"
-
-#ifdef _WIN32
-#include <Windows.h>
-#else
-typedef unsigned char BYTE;
-#endif
-
-#include "core.h"
-
-#include "Nodes/Schema.h"
-#include "Nodes/ColumnContainer.h"
-#include "Nodes/TableColumn.h"
-#include "Nodes/Index.h"
-#include "Nodes/DataRow.h"
-#include "Nodes/CppInclude.h"
-#include "Nodes/Table.h"
-#include "Nodes/DatabaseView.h"
-#include "Nodes/View.h"
-#include "Nodes/Relation.h"
-
-extern tsStringBase gOutputPath;
-extern tsStringBase gPrefix;
-extern tsStringBase gBuildType;
-
-#include "SQLHelper.h"
-#include "SQLServerHelper.h"
-#include "SqliteHelper.h"
+#include "stdafx.h"
 #include "CppHelper.h"
-#include "CHelper.h"
-#include "OracleHelper.h"
-#include "MySQLHelper.h"
-
-
-

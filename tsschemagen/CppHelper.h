@@ -1612,13 +1612,13 @@ private:
 			else if (type == "System.Guid")
 				source << "    TSStringToGuid(record->Value(\"" + childName + "\"), current._" + childName + ");\r\n";
 			else if (type == "System.Boolean")
-				source << "    current._" + childName + " = TsStrToInt(record->Value(\"" + childName + "\")) != 0;\r\n";
+				source << "    current._" + childName + " = TsStrToInt(record->Value(\"" + childName + "\").c_str()) != 0;\r\n";
 			else if (type == "System.Int32" || type == "System.Int16")
-				source << "    current._" + childName + " = TsStrToInt(record->Value(\"" + childName + "\"));\r\n";
+				source << "    current._" + childName + " = TsStrToInt(record->Value(\"" + childName + "\").c_str());\r\n";
 			else if (type == "System.DateTime")
 				source << "    current._" + childName + " = tscrypto::tsCryptoDate(record->Value(\"" + childName + "\"), tscrypto::tsCryptoDate::ISO8601);\r\n";
 			else if (type == "System.Double")
-				source << "    current._" + childName + " = TsStrToDouble(record->Value(\"" + childName + "\"));\r\n";
+				source << "    current._" + childName + " = TsStrToDouble(record->Value(\"" + childName + "\").c_str());\r\n";
 			else
 			{
 				source << "    current._" + childName + " = record->Value(\"" + childName + "\");\r\n";

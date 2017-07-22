@@ -34,9 +34,10 @@
 tsStringBase gOutputPath;
 tsStringBase gPrefix;
 tsStringBase gBuildType;
+bool useC = false;
 
 enum {
-	OPT_HELP = 0, OPT_OUTPUT, OPT_BUILDTYPE, OPT_PREFIX
+	OPT_HELP = 0, OPT_OUTPUT, OPT_BUILDTYPE, OPT_PREFIX, OPT_C_OUTPUT
 };
 
 CSimpleOpt::SOption g_rgOptions1[] =
@@ -45,6 +46,7 @@ CSimpleOpt::SOption g_rgOptions1[] =
 	{ OPT_HELP, "-h", SO_NONE },
 	{ OPT_HELP, "-help", SO_NONE },
 	{ OPT_HELP, "--help", SO_NONE },
+	{ OPT_C_OUTPUT, "-c", SO_NONE },
 	{ OPT_OUTPUT, "-o", SO_REQ_SEP },
 	{ OPT_OUTPUT, "--output", SO_REQ_SEP },
 	{ OPT_BUILDTYPE, "-b", SO_REQ_SEP },
@@ -56,7 +58,7 @@ CSimpleOpt::SOption g_rgOptions1[] =
 
 static void Usage()
 {
-	printf("USAGE: \n   -o=dir or --output=dir \n   -p=prefix or --prefix=prefix \n   -b=buildType or --build=buildtype    - where buildtype is MSSQL, SQLITE, ORACLE, MYSQL, SQL, H, CPP, CODE, ALL\n   fileToProcess [filetoprocess]*\n");
+	printf("USAGE: \n   -c  C output\n   -o=dir or --output=dir \n   -p=prefix or --prefix=prefix \n   -b=buildType or --build=buildtype    - where buildtype is MSSQL, SQLITE, ORACLE, MYSQL, SQL, H, CPP, CODE, ALL\n   fileToProcess [filetoprocess]*\n");
 }
 
 static std::vector<tsStringBase> SplitString(const tsStringBase& src, const tsStringBase& splitOnString)
@@ -207,7 +209,18 @@ static bool ProcessFile(const char *filename)
 			fileNames.push_back(gOutputPath + ToLower(gPrefix) + "mysql_ak.sql");
 			SendOutputToFiles(builder, fileNames, filename, SQLHelper::AddKeysPart);
 		}
-		if (gBuildType == "H" || gBuildType == "CPP" || gBuildType == "CODE" || gBuildType == "ALL")
+		if (gBuildType == "H" || gBuildType == "CPP" || gBuildType == "C" || gBuildType == "CODE" || gBuildType == "ALL")
+		{
+            if (useC)
+            {
+                builder = std::shared_ptr<SQLHelper>(dynamic_cast<SQLHelper*>(new CHelper(gBuildType != "C", gBuildType != "H")));
+                fileNames.clear();
+                if (gBuildType != "C")
+                    fileNames.push_back(gOutputPath + gPrefix + "_Data.h");
+                if (gBuildType != "H")
+                    fileNames.push_back(gOutputPath + gPrefix + "_Data.c");
+            }
+            else
 		{
 			builder = std::shared_ptr<SQLHelper>(dynamic_cast<SQLHelper*>(new CppHelper(gBuildType != "CPP", gBuildType != "H")));
 			fileNames.clear();
@@ -215,6 +228,7 @@ static bool ProcessFile(const char *filename)
 				fileNames.push_back(gOutputPath + gPrefix + "_Data.h");
 			if (gBuildType != "H")
 				fileNames.push_back(gOutputPath + gPrefix + "_Data.cpp");
+            }
 			SendOutputToFiles(builder, fileNames, filename, SQLHelper::AllParts);
 		}
 		printf("The output file is stored in '%s'.\n", gOutputPath.c_str());
@@ -252,6 +266,8 @@ int main(int argc, char* argv[])
 			{
 				gBuildType = args.OptionArg();
 			}
+            else if (args.OptionId() == OPT_C_OUTPUT)
+                useC = true;
 		}
 	}
 

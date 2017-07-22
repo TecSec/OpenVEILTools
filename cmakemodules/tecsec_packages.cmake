@@ -53,7 +53,8 @@ find_package(GMock)
 find_package(GTest)
 # find_package(Boost)
 set(wxWidgets_EXCLUDE_COMMON_LIBRARIES ON)
-find_package(wxWidgets COMPONENTS core base adv )
+include(GetWxWidgetsConfig)
+# find_package(wxWidgets COMPONENTS core base adv html )
 
 
 if(ZLIB_FOUND)

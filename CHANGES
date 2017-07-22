@@ -1,1 +1,6 @@
 Initial Release
+
+
+Changes for 7.0.58
+*  Using the new OAL (OS Abstraction Layer)
+*  Some support for C structs/code

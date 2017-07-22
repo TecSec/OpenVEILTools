@@ -182,6 +182,10 @@ bool BasicFieldNode::WritePODFieldDefinition(std::shared_ptr<FileNode> files)
 	{
 
 	}
+    else if (gAsC)
+    {
+        files->Header()->WriteLine(C_Type() + " _" + Name() + ";");
+    }
 	else
 	{
 		files->Header()->WriteLine(CppType() + " _" + Name() + ";");

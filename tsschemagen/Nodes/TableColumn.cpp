@@ -114,6 +114,63 @@ void TableColumn::GetColumnNodeParameters(tsStringBase& ConstPart, tsStringBase&
 		RightPart = "& ";
 	}
 }
+tsStringBase TableColumn::FullName() const
+{
+    if (!Formula().empty())
+    {
+        return Formula();
+    }
+    if (Table().empty())
+    {
+        return Name();
+    }
+    return Table() + "." + Name();
+}
+void TableColumn::Get_C_ColumnNodeParameters(tsStringBase& ConstPart, tsStringBase& TypePart, tsStringBase& RightPart, uint32_t& arraySize)
+{
+	ConstPart = "";
+	TypePart = "";
+	RightPart = "";
+    arraySize = 0;
+
+	if (FieldType() == "System.String" || FieldType() == "System.Char[]")
+	{
+		TypePart = "char";
+		ConstPart = "const ";
+		RightPart = "* ";
+        arraySize = FieldLength();
+	}
+	else if (FieldType() == "System.Guid")
+	{
+		TypePart = "GUID";
+		ConstPart = "const ";
+		RightPart = "* ";
+	}
+	else if (FieldType() == "System.Boolean")
+	{
+		TypePart = "ts_bool";
+	}
+	else if (FieldType() == "System.Int32" || FieldType() == "System.Int16")
+	{
+		TypePart = "int";
+	}
+	else if (FieldType() == "System.DateTime")
+	{
+		TypePart = "char";
+        arraySize = 15;
+	}
+	else if (FieldType() == "System.Double")
+	{
+		TypePart = "double";
+	}
+	else
+	{
+		TypePart = "char";
+		ConstPart = "const ";
+		RightPart = "* ";
+        arraySize = FieldLength();
+    }
+}
 tsStringBase TableColumn::GetTSFieldType()
 {
 	tsStringBase type = "TSFieldDefinition::";
@@ -147,6 +204,108 @@ tsStringBase TableColumn::GetTSFieldType()
 		type += "ftString";
 	}
 	return type;
+}
+tsStringBase TableColumn::Get_C_TSFieldType()
+{
+    tsStringBase type = "dbr";
+
+    if (FieldType() == "System.String" || FieldType() == "System.Char[]")
+    {
+        type += "ftString";
+    }
+    else if (FieldType() == "System.Guid")
+    {
+        type += "ftGUID";
+    }
+    else if (FieldType() == "System.Boolean")
+    {
+        type += "ftBool";
+    }
+    else if (FieldType() == "System.Int32" || FieldType() == "System.Int16")
+    {
+        type += "ftLong";
+    }
+    else if (FieldType() == "System.DateTime")
+    {
+        type += "ftDate";
+    }
+    else if (FieldType() == "System.Double")
+    {
+        type += "ftDouble";
+    }
+    else
+    {
+        type += "ftString";
+    }
+    return type;
+}
+tsStringBase TableColumn::Get_C_ToSqlName()
+{
+    tsStringBase type;
+
+    if (FieldType() == "System.String" || FieldType() == "System.Char[]")
+    {
+        type += "StringToSql";
+    }
+    else if (FieldType() == "System.Guid")
+    {
+        type += "GUIDToSql";
+    }
+    else if (FieldType() == "System.Boolean")
+    {
+        type += "BoolToSql";
+    }
+    else if (FieldType() == "System.Int32" || FieldType() == "System.Int16")
+    {
+        type += "LongToSql";
+    }
+    else if (FieldType() == "System.DateTime")
+    {
+        type += "DateToSql";
+    }
+    else if (FieldType() == "System.Double")
+    {
+        type += "DoubleToSql";
+    }
+    else
+    {
+        type += "StringToSql";
+    }
+    return type;
+}
+tsStringBase TableColumn::Get_C_FromSqlName()
+{
+    tsStringBase type;
+
+    if (FieldType() == "System.String" || FieldType() == "System.Char[]")
+    {
+        type += "_populateStringField";
+    }
+    else if (FieldType() == "System.Guid")
+    {
+        type += "_populateGUIDField";
+    }
+    else if (FieldType() == "System.Boolean")
+    {
+        type += "_populateBoolField";
+    }
+    else if (FieldType() == "System.Int32" || FieldType() == "System.Int16")
+    {
+        type += "_populateLongField";
+    }
+    else if (FieldType() == "System.DateTime")
+    {
+        type += "_populateDateField";
+    }
+    else if (FieldType() == "System.Double")
+    {
+        type += "_populateDoubleField";
+    }
+    else
+    {
+        type += "_populateStringField";
+    }
+    return type;
 }
 
 tsStringBase TableColumn::GetConstPart()

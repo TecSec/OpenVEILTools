@@ -40,6 +40,7 @@ set(CppSources
 	SQLServerHelper.cpp
 	SqliteHelper.cpp
 	CppHelper.cpp
+	CHelper.cpp
 	OracleHelper.cpp
 	MySQLHelper.cpp
 	
@@ -70,6 +71,7 @@ add_executable(tsschemagen
 	SQLServerHelper.h
 	SqliteHelper.h
 	CppHelper.h
+	CHelper.h
 	OracleHelper.h
 	MySQLHelper.h
 

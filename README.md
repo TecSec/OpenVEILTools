@@ -14,10 +14,10 @@ We use an out of source build process.  The project/make files and output
 can be found in the build folder that is created by the bootstrap.
 
 ### Requirements
-- VEIL Cryptographic Library 7.1.0 or later (Contact TecSec, Inc.)
+- VEIL Cryptographic Library 7.1.7 or later (Contact TecSec, Inc.)
 - Windows
   - CMake 3.3+
-  - Visual Studio 2013 or Visual Studio 2015 or mingw-w64.
+  - Visual Studio 2015 or Visual Studio 2017 or mingw-w64.
 - Linux
   - CMake 3.3+
   - GCC 4.8.2+
@@ -33,16 +33,17 @@ can be found in the build folder that is created by the bootstrap.
 2. Go to the directory of the repository in a command prompt
 3. `cd make\windows`
 4. Run the following command to bootstrap x86 and x64(Debug and Release)
-  - If Visual Studio 2015:
-    - `bootstrap_VS2015.cmd`
-  - If Visual Studio 2013:
-    - `bootstrap_VS2013.cmd`
+  - If Visual Studio:
+    - `bootstrap_VS.cmd xx`
+
+      where xx is 14 for VS2015 or 15 for VS2017
+
 5. `cd ..\..\Build`
 6. Run the following command to build x86 and x64(Debug and Release)
   - If Visual Studio 2015:
     - `buildall-vc14.cmd`
-  - If Visual Studio 2013:
-    - `buildall-vc12.cmd`
+  - If Visual Studio 2017:
+    - `buildall-vc15.cmd`
 
 If you are going to use mingw then copy the files in make\windows\mingw_support to a folder in your path.  Then modify the files so that they reference the path to the required mingw folder.  The files are currently configured as if you had installed the mingw system in the folder c:\mingw-w64.  To bootstrap a mingw environment use the following:
 

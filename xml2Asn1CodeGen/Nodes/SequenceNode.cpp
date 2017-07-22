@@ -537,7 +537,41 @@ bool SequenceNode::WritePODStructure(std::shared_ptr<FileNode> files)
 		if (!!_inheritedFrom)
 			PODparent << " : public " << _inheritedFrom->PODStructureName();
 
+        if (gAsC)
+        {
+            files->Header()->WriteLine("// ----------------------------------------------------------------");
+            files->Header()->WriteLine();
 
+            files->Header()->WriteLine("struct " + PODStructureName() + PODparent + " {");
+            files->Source()->WriteLine("// " + PODStructureName());
+            files->Header()->indent();
+
+            files->Header()->WriteLine("// Data fields");
+            if (HasOID() && !InheritedHasOID())
+            {
+                files->Header()->WriteLine("const char* _OID;");
+            }
+            if (HasVersion() && !InheritedHasVersion())
+            {
+                files->Header()->WriteLine("int _VERSION;");
+            }
+            for (auto e : Elements())
+            {
+                if (e->IsOptional())
+                {
+                    files->Header()->WriteLine("bool _" + e->Name() + "_exists;");
+                }
+                if (!e->WritePODFieldDefinition(files))
+                {
+                    AddError("xml2Asn1CodeGen", "", (tsStringBase().append("Element ").append(e->Name()).append(" in structure ").append(Name()).append(" failed to write.\n")));
+                    return false;
+                }
+            }
+
+
+        }
+        else
+        {
 		files->Header()->SetNamespace(NameSpace());
 
 		files->Header()->WriteLine("// ----------------------------------------------------------------");
@@ -684,7 +718,7 @@ bool SequenceNode::WritePODStructure(std::shared_ptr<FileNode> files)
 		{
 			if (e->IsOptional())
 			{
-				files->Header()->WriteLine("_" + e->Name() + "_exists = obj._"+e->Name()+"_exists;");
+                    files->Header()->WriteLine("_" + e->Name() + "_exists = obj._" + e->Name() + "_exists;");
 			}
 			files->Header()->WriteLine(e->BuildCopyLine("obj."));
 		}
@@ -800,7 +834,7 @@ bool SequenceNode::WritePODStructure(std::shared_ptr<FileNode> files)
 		files->Source()->WriteLine("	ClearTlv(object, " + ns + PODStructureName() + "::__Metadata_main, " + ns + PODStructureName() + "::__Metadata_main_count);");
 		if (HasOID() && !DefaultOID().empty())
 		{
-			files->Source()->WriteLine("	((" + ns + PODStructureName() + "*)object)->_OID = tscrypto::tsCryptoData("+DefaultOID()+", tscrypto::tsCryptoData::OID);");
+                files->Source()->WriteLine("	((" + ns + PODStructureName() + "*)object)->_OID = tscrypto::tsCryptoData(" + DefaultOID() + ", tscrypto::tsCryptoData::OID);");
 		}
 		if (HasVersion() && DefaultVersion() != 0)
 		{
@@ -1458,7 +1492,7 @@ bool SequenceNode::WritePODStructure(std::shared_ptr<FileNode> files)
 			files->Header()->outdent();
 			files->Header()->WriteLine("}");
 		}
-
+        }
 		files->Header()->outdent();
 		files->Header()->WriteLine("};");
 		files->Header()->WriteLine();

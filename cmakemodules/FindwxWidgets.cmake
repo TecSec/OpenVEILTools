@@ -173,12 +173,10 @@
 # Helper macro to control the debugging output globally. There are
 # two versions for controlling how verbose your output should be.
 macro(DBG_MSG _MSG)
-#  message(STATUS
-#    "${CMAKE_CURRENT_LIST_FILE}(${CMAKE_CURRENT_LIST_LINE}): ${_MSG}")
+  # message(STATUS "${CMAKE_CURRENT_LIST_FILE}(${CMAKE_CURRENT_LIST_LINE}): ${_MSG}")
 endmacro()
 macro(DBG_MSG_V _MSG)
-#  message(STATUS
-#    "${CMAKE_CURRENT_LIST_FILE}(${CMAKE_CURRENT_LIST_LINE}): ${_MSG}")
+  # message(STATUS "${CMAKE_CURRENT_LIST_FILE}(${CMAKE_CURRENT_LIST_LINE}): ${_MSG}")
 endmacro()
 
 # Clear return values in case the module is loaded more than once.
@@ -413,7 +411,7 @@ if(wxWidgets_FIND_STYLE STREQUAL "win32")
           list(APPEND wxWidgets_LIBRARIES_RELEASE
             ${WX_${LIB}}
             )
-		  if(WIN32)
+		  if(WIN32 AND NOT BUILD_SHARED_LIBS)
 			if(${TS_X_PLATFORM} STREQUAL "x64")
 				string(REPLACE ".lib" "_${TS_TOOLSET}0_${TS_X_PLATFORM}_tecsec.dll" __tmp "${WX_${LIB}d}")
 			else()
@@ -434,7 +432,8 @@ if(wxWidgets_FIND_STYLE STREQUAL "win32")
 			  list(APPEND wxWidgets_DLLS_RELEASE
 				${__tmp}
 				)
-		  endif(WIN32)
+      elseif(WIN32)
+		  endif(WIN32 AND NOT BUILD_SHARED_LIBS)
         else()
           DBG_MSG_V("- not found due to missing WX_${LIB}=${WX_${LIB}} or WX_${LIB}d=${WX_${LIB}d}")
           set(wxWidgets_FOUND FALSE)

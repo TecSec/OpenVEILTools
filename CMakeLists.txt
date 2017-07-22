@@ -58,7 +58,7 @@ set(CMAKE_OSX_ARCHITECTURES "Universal")
 set(DEBUG_TSALG ON)
 
 set(SuperProject ON)
-set(TS_SUPPRESS_TOOLSET ON)
+set(TS_SUPPRESS_TOOLSET OFF)
 
 #
 # Set up the project name and look for the compiler configuration
@@ -120,7 +120,7 @@ endif(APPLE)
 
 set(VEILTOOLS_MAJOR_VERSION 7)
 set(VEILTOOLS_MINOR_VERSION 0)
-set(VEILTOOLS_REVISION_VERSION 56)
+set(VEILTOOLS_REVISION_VERSION 58)
 set(VEILTOOLS_BUILD_VERSION 0)
 set(OSX_FRAMEWORK_VERSION A)
 

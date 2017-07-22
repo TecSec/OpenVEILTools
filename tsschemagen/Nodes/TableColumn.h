@@ -69,10 +69,15 @@ public:
 	tsStringBase Formula() const { return _Formula; }
 	JSON_MergeType JSONMergeType() const { return _JSONMergeType; }
 	tsStringBase description() const { return _Description; }
+    tsStringBase FullName() const;
 
 
 	void GetColumnNodeParameters(tsStringBase& ConstPart, tsStringBase& TypePart, tsStringBase& RightPart);
+    void Get_C_ColumnNodeParameters(tsStringBase& ConstPart, tsStringBase& TypePart, tsStringBase& RightPart, uint32_t& arraySize);
 	tsStringBase GetTSFieldType();
+    tsStringBase Get_C_TSFieldType();
+    tsStringBase Get_C_ToSqlName();
+    tsStringBase Get_C_FromSqlName();
 	tsStringBase GetConstPart();
 	tsStringBase GetTypePart();
 	tsStringBase GetRightPart();
