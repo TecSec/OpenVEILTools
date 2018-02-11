@@ -243,8 +243,8 @@ bool SequenceFieldNode::WriteExportElement(std::shared_ptr<FileNode> files)
 	tsStringBase line;
 
 	line += "<Sequence";
-	Attributes().foreach([&line](const __tsAttributeMapItem& item) {
-		line.append(" ").append(item.m_name).append("=\"").append(item.m_value).append("\"");
+	Attributes().foreach([&line](const char* name, const char* value) {
+		line.append(" ").append(name).append("=\"").append(value).append("\"");
 	});
 	line += "/>";
 	files->Export()->WriteLine(line);

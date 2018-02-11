@@ -30,7 +30,6 @@
 // Written by Roger Butler
 
 #include "stdafx.h"
-#include "ConvertUTF.h"
 
 #define MemAllocSize 100
 
@@ -43,80 +42,49 @@
 
 const tsData::size_type tsData::npos = (size_type)(-1);
 
-tsData::tsData() : m_data(nullptr), m_used(0), m_allocated(-1)
+tsData::tsData() : _data(tsCreateBuffer())
 {
-	reserve(0);
 }
-tsData::tsData(size_type count, value_type value) : m_data(nullptr), m_used(0), m_allocated(-1)
+tsData::tsData(size_type count, value_type value) : _data(tsCreateBuffer())
 {
 	resize(count, value);
 }
-tsData::tsData(const tsData &obj, size_type pos) : m_data(nullptr), m_used(0), m_allocated(-1)
+tsData::tsData(const tsData &obj, size_type pos) : _data(tsCreateBuffer())
 {
-	if (pos >= obj.size())
-		reserve(0);
-	else
+	if (pos < obj.size())
 	{
-		resize(obj.size() - pos);
-		obj.copy(m_data, size(), pos);
+        append(obj, pos);
 	}
 }
-tsData::tsData(const tsData &obj, size_type pos, size_type count) : m_data(nullptr), m_used(0), m_allocated(-1)
+tsData::tsData(const tsData &obj, size_type pos, size_type count) : _data(tsCreateBuffer())
 {
-	if (pos >= obj.size())
-		reserve(0);
-	else
+	if (pos < obj.size())
 	{
-		if (count + pos > obj.size())
-			count = obj.size() - pos;
-
-		resize(count);
-		obj.copy(m_data, count, pos);
+        append(obj, pos, count);
 	}
 }
-tsData::tsData(const_pointer data, size_type Len) : m_data(nullptr), m_used(0), m_allocated(-1)
+tsData::tsData(const_pointer data, size_type Len) : _data(tsCreateBuffer())
 {
-	if (data == nullptr || Len == 0)
-		reserve(0);
-	else
+	if (data != nullptr && Len != 0)
 	{
-		resize(Len);
-		memcpy(m_data, data, Len);
+        append(data, Len);
 	}
 }
-tsData::tsData(const_pointer data) : m_data(nullptr), m_used(0), m_allocated(-1)
+tsData::tsData(const_pointer data) : _data(tsCreateBuffer())
 {
-	if (data == nullptr)
-		reserve(0);
-	else
+	if (data != nullptr)
 	{
-		size_type Len = (size_type)strlen((const char*)data);
-		if (Len == 0)
-			reserve(0);
-		else
-		{
-			resize(Len);
-			memcpy(m_data, data, Len);
-		}
+        append(data);
 	}
 }
-tsData::tsData(const char* data) : m_data(nullptr), m_used(0), m_allocated(-1)
+tsData::tsData(const char* data) : _data(tsCreateBuffer())
 {
-	if (data == nullptr)
-		reserve(0);
-	else
+	if (data != nullptr)
 	{
-		size_type Len = (size_type)strlen(data);
-		if (Len == 0)
-			reserve(0);
-		else
-		{
-			resize(Len);
-			memcpy(m_data, data, Len);
-		}
+        append(data);
 	}
 }
-tsData::tsData(const char* value, DataStringType type) : m_data(nullptr), m_used(0), m_allocated(-1)
+tsData::tsData(const char* value, DataStringType type) : _data(tsCreateBuffer())
 {
 	reserve(0);
 	switch (type)
@@ -137,67 +105,36 @@ tsData::tsData(const char* value, DataStringType type) : m_data(nullptr), m_used
 		break;
 	}
 }
-tsData::tsData(const tsData &obj) : m_data(nullptr), m_used(0), m_allocated(-1)
+tsData::tsData(const tsData &obj) : _data(nullptr)
 {
-	if (obj.size() == 0)
-		reserve(0);
-	else
-	{
-		resize(obj.size());
-		obj.copy(m_data, size(), 0);
-	}
+    _data = tsDuplicateBuffer(obj._data);
 }
 tsData::tsData(tsData &&obj)
 {
-	m_data = obj.m_data;
-	m_used = obj.m_used;
-	m_allocated = obj.m_allocated;
+	_data = obj._data;
 
-	obj.m_data = nullptr;
-	obj.m_used = 0;
-	obj.m_allocated = -1;
-	obj.reserve(0);
+	obj._data = tsCreateBuffer();
 }
-tsData::tsData(std::initializer_list<value_type> init) : m_data(nullptr), m_used(0), m_allocated(-1)
+tsData::tsData(std::initializer_list<value_type> init) : _data(tsCreateBuffer())
 {
-	size_type index = 0;
-	resize((size_type)init.size());
-
-	for (auto i = init.begin(); i != init.end(); ++i)
-	{
-		m_data[index++] = *i;
-	}
+    append(init);
 }
-tsData::tsData(std::initializer_list<char> init) : m_data(nullptr), m_used(0), m_allocated(-1)
+tsData::tsData(std::initializer_list<char> init) : _data(tsCreateBuffer())
 {
-	size_type index = 0;
-	resize((size_type)init.size());
-
-	for (auto i = init.begin(); i != init.end(); ++i)
-	{
-		m_data[index++] = *i;
-	}
+    append(init);
 }
-tsData::tsData(value_type ch) : m_data(nullptr), m_used(0), m_allocated(-1)
+tsData::tsData(value_type ch) : _data(tsCreateBuffer())
 {
-	resize(1, ch);
+    append(&ch, 1);
 }
-tsData::tsData(char ch) : m_data(nullptr), m_used(0), m_allocated(-1)
+tsData::tsData(char ch) : _data(tsCreateBuffer())
 {
-	resize(1, (value_type)ch);
+    append(&ch, 1);
 }
 
 tsData::~tsData()
 {
-	if (m_data != nullptr)
-	{
-		if (m_used > 0)
-			memset(m_data, 0, m_used);
-		delete [] m_data;
-		m_data = nullptr;
-	}
-	m_used = 0;
-	m_allocated = -1;
+    tsFreeBuffer(&_data);
 }
 
 tsData &tsData::operator=(const tsData &obj)
@@ -209,18 +146,8 @@ tsData &tsData::operator=(tsData &&obj)
 {
 	if (&obj != this)
 	{
-		resize(0);
-		if (m_data != nullptr)
-			delete[] m_data;
-
-		m_data = obj.m_data;
-		m_used = obj.m_used;
-		m_allocated = obj.m_allocated;
-
-		obj.m_data = nullptr;
-		obj.m_used = 0;
-		obj.m_allocated = -1;
-		obj.reserve(0);
+        tsEmptyBuffer(_data);
+        tsMoveBuffer(obj._data, _data);
 	}
 	return *this;
 }
@@ -236,14 +163,14 @@ tsData &tsData::operator=(const_pointer data) /* zero terminated */
 		len = (size_type)strlen((const char *)data);
 
 		resize(len);
-		memcpy(m_data, data, len);
+		memcpy(rawData(), data, len);
 	}
 	return *this;
 }
 tsData &tsData::operator=(value_type obj)
 {
 	resize(1);
-	m_data[0] = obj;
+	rawData()[0] = obj;
 	return *this;
 }
 tsData &tsData::operator=(std::initializer_list<value_type> iList)
@@ -263,7 +190,7 @@ tsData &tsData::operator=(const char *data) // zero terminated - tecsec addition
 		len = (size_type)strlen(data);
 
 		resize(len);
-		memcpy(m_data, data, len);
+		memcpy(rawData(), data, len);
 	}
 	return *this;
 }
@@ -297,18 +224,8 @@ tsData& tsData::assign(tsData &&obj)
 	if (this == &obj)
 		return *this;
 
-	resize(0);
-	if (m_data != nullptr)
-		delete [] m_data;
-
-	m_data = obj.m_data;
-	m_used = obj.m_used;
-	m_allocated = obj.m_allocated;
-
-	obj.m_data = nullptr;
-	obj.m_used = 0;
-	obj.m_allocated = -1;
-	obj.reserve(0);
+    tsEmptyBuffer(_data);
+    tsMoveBuffer(obj._data, _data);
 
 	return *this;
 }
@@ -317,7 +234,7 @@ tsData& tsData::assign(const_pointer newData, size_type count)
 	resize(count);
 	if (count > 0 && newData != nullptr)
 	{
-		memcpy(m_data, newData, count);
+		memcpy(rawData(), newData, count);
 	}
 	return *this;
 }
@@ -330,9 +247,10 @@ tsData& tsData::assign(std::initializer_list<value_type> iList)
 	size_type pos = size();
 
 	resize((size_type)iList.size());
+    pointer ptr = rawData();
 	for (auto it = iList.begin(); it != iList.end(); ++it)
 	{
-		m_data[pos++] = *it;
+		ptr[pos++] = *it;
 	}
 	return *this;
 }
@@ -341,7 +259,7 @@ tsData& tsData::assign(const char *newData, size_type count) // tecsec extension
 	resize(count);
 	if (count > 0 && newData != nullptr)
 	{
-		memcpy(m_data, newData, count);
+		memcpy(rawData(), newData, count);
 	}
 	return *this;
 }
@@ -354,72 +272,73 @@ tsData& tsData::assign(std::initializer_list<char> iList)
 	size_type pos = size();
 
 	resize((size_type)iList.size());
+    pointer ptr = rawData();
 	for (auto it = iList.begin(); it != iList.end(); ++it)
 	{
-		m_data[pos++] = *it;
+		ptr[pos++] = *it;
 	}
 	return *this;
 }
 
 tsData::reference tsData::at(size_type index)
 {
-	if (index >= m_used)
+	if (index >= size())
 	{
 		throw std::out_of_range("index");
 	}
-	return m_data[index];
+	return rawData()[index];
 }
 tsData::const_reference tsData::at(size_type index) const
 {
-	if (index >= m_used)
+	if (index >= size())
 	{
 		throw std::out_of_range("index");
 	}
-	return m_data[index];
+	return c_str()[index];
 }
 tsData::value_type tsData::c_at(size_type index) const // tecsec addition
 {
-	if (index >= m_used)
+	if (index >= size())
 	{
 		throw std::out_of_range("index");
 	}
-	return m_data[index];
+	return c_str()[index];
 }
 tsData::const_pointer tsData::data() const
 {
-	return m_data;
+	return c_str();
 }
 tsData::pointer tsData::data()
 {
-	return m_data;
+	return rawData();
 }
 tsData::pointer tsData::rawData() // tecsec addition
 {
-	return m_data;
+	return tsGetBufferDataPtr(_data);
 }
 tsData::const_pointer tsData::c_str() const
 {
-	return m_data;
+	return tsGetBufferDataPtr(_data);
 }
 tsData::reference tsData::front()
 {
-	return m_data[0];
+	return rawData()[0];
 }
 tsData::const_reference tsData::front() const
 {
-	return m_data[0];
+	return c_str()[0];
 }
 tsData::reference tsData::back()
 {
 	if (empty())
 		throw std::out_of_range("back");
-	return m_data[m_used - 1];
+	return rawData()[size() - 1];
 }
 tsData::const_reference tsData::back() const
 {
 	if (empty())
 		throw std::out_of_range("back");
-	return m_data[m_used - 1];
+	return c_str()[size() - 1];
 }
 tsData::reference tsData::operator [] (size_type index)
 {
@@ -432,15 +351,15 @@ tsData::const_reference tsData::operator [] (size_type index) const
 
 bool tsData::empty() const
 {
-	return m_used == 0;
+	return size() == 0;
 }
 tsData::size_type  tsData::size() const
 {
-	return m_used;
+	return tsBufferUsed(_data);
 }
 tsData::size_type  tsData::length() const
 {
-	return m_used;
+	return size();
 }
 tsData::size_type tsData::max_size() const
 {
@@ -450,38 +369,11 @@ _Post_satisfies_(this->m_data != nullptr) void tsData::reserve(size_type newSize
 {
 	if (newSize > max_size())
 		throw std::length_error("Invalid size");
-	if ((difference_type)newSize > m_allocated)
-	{
-		pointer tmp;
-		size_type origNewSize = newSize;
-
-		{
-			if (newSize > 20000)
-				newSize += 1024;
-			else
-				newSize += MemAllocSize;
-			tmp = (value_type*)new value_type[(sizeof(value_type) * (newSize + 1))];
-			if (tmp == nullptr)
-			{
-				throw std::bad_alloc();
-			}
-			memset(&tmp[m_used], 0, (origNewSize - m_used) * sizeof(value_type));
-			memset(&tmp[origNewSize], 0, (newSize + 1 - origNewSize) * sizeof(value_type));
-			if (m_data != nullptr)
-			{
-				memcpy(tmp, m_data, m_used * sizeof(value_type));
-				memset(m_data, 0, m_used * sizeof(value_type));
-				delete[] m_data;
-			}
-
-			m_data = tmp;
-			m_allocated = newSize;
-		}
-	}
+    tsReserveBuffer(_data, newSize);
 }
 tsData::size_type tsData::capacity() const
 {
-	return (size_type)m_allocated;
+	return (size_type)tsBufferReserved(_data);
 }
 void tsData::clear()
 {
@@ -493,8 +385,9 @@ tsData& tsData::insert(size_type index, size_type count, value_type ch)
 	size_type oldsize = size();
 
 	resize(size() + count);
-	memmove(&m_data[index + count], &m_data[index], sizeof(value_type) * (oldsize - index));
-	memset(&m_data[index], ch, count);
+    pointer ptr = rawData();
+	memmove(&ptr[index + count], &ptr[index], sizeof(value_type) * (oldsize - index));
+	memset(&ptr[index], ch, count);
 	return *this;
 }
 tsData& tsData::insert(size_type index, value_type ch)
@@ -502,8 +395,9 @@ tsData& tsData::insert(size_type index, value_type ch)
 	size_type oldsize = size();
 
 	resize(size() + 1);
-	memmove(&m_data[index + 1], &m_data[index], sizeof(value_type) * (oldsize - index));
-	m_data[index] = ch;
+    pointer ptr = rawData();
+	memmove(&ptr[index + 1], &ptr[index], sizeof(value_type) * (oldsize - index));
+	ptr[index] = ch;
 	return *this;
 }
 tsData& tsData::insert(size_type index, const_pointer s)
@@ -515,8 +409,9 @@ tsData& tsData::insert(size_type index, const_pointer s)
 	size_type count = (size_type)strlen((const char *)s);
 
 	resize(size() + count);
-	memmove(&m_data[index + count], &m_data[index], sizeof(value_type) * (oldsize - index));
-	memcpy(&m_data[index], s, count);
+    pointer ptr = rawData();
+	memmove(&ptr[index + count], &ptr[index], sizeof(value_type) * (oldsize - index));
+	memcpy(&ptr[index], s, count);
 	return *this;
 }
 tsData& tsData::insert(size_type index, const_pointer s, size_type count)
@@ -527,8 +422,9 @@ tsData& tsData::insert(size_type index, const_pointer s, size_type count)
 	size_type oldsize = size();
 
 	resize(size() + count);
-	memmove(&m_data[index + count], &m_data[index], sizeof(value_type) * (oldsize - index));
-	memcpy(&m_data[index], s, count);
+    pointer ptr = rawData();
+	memmove(&ptr[index + count], &ptr[index], sizeof(value_type) * (oldsize - index));
+	memcpy(&ptr[index], s, count);
 	return *this;
 }
 tsData& tsData::insert(size_type index, const tsData& str)
@@ -539,8 +435,9 @@ tsData& tsData::insert(size_type index, const tsData& str)
 	if (count == 0)
 		return *this;
 	resize(size() + count);
-	memmove(&m_data[index + count], &m_data[index], sizeof(value_type) * (oldsize - index));
-	memcpy(&m_data[index], str.data(), count);
+    pointer ptr = rawData();
+	memmove(&ptr[index + count], &ptr[index], sizeof(value_type) * (oldsize - index));
+	memcpy(&ptr[index], str.data(), count);
 	return *this;
 }
 tsData& tsData::insert(size_type index, const tsData& str, size_type index_str, size_type count)
@@ -558,7 +455,8 @@ tsData& tsData::erase(size_type pos, size_type count)
 	}
 	else
 	{
-		memmove(&m_data[pos], &m_data[pos + count], sizeof(value_type) * (size() - count - pos));
+        pointer ptr = rawData();
+		memmove(&ptr[pos], &ptr[pos + count], sizeof(value_type) * (size() - count - pos));
 		resize(size() - count);
 	}
 	return *this;
@@ -584,9 +482,10 @@ tsData &tsData::append(const tsData &obj)
 
 	if (objSize > 0)
 	{
-		tsData::size_type oldUsed = m_used;
+		tsData::size_type oldUsed = size();
 		resize(oldUsed + objSize);
-		memcpy(&m_data[oldUsed], obj.c_str(), objSize * sizeof(value_type));
+        pointer ptr = rawData();
+		memcpy(&ptr[oldUsed], obj.c_str(), objSize * sizeof(value_type));
 	}
 	return *this;
 }
@@ -615,9 +514,10 @@ tsData &tsData::append(std::initializer_list<value_type> list)
 	size_type pos = size();
 
 	resize(size() + (size_type)list.size());
+    pointer ptr = rawData();
 	for (auto it = list.begin(); it != list.end(); ++it)
 	{
-		m_data[pos++] = *it;
+		ptr[pos++] = *it;
 	}
 	return *this;
 }
@@ -625,12 +525,13 @@ tsData &tsData::append(std::initializer_list<value_type> list)
 tsData &tsData::operator+= (const tsData &obj)
 {
 	tsData::size_type len = 0;
-	tsData::size_type oldUsed = m_used;
+	tsData::size_type oldUsed = size();
 	if (obj.size() > 0)
 	{
 		len = obj.size();
-		resize(m_used + len);
-		memcpy(&m_data[oldUsed], obj.m_data, len * sizeof(value_type));
+		resize(size() + len);
+        pointer ptr = rawData();
+		memcpy(&ptr[oldUsed], obj.c_str(), len * sizeof(value_type));
 	}
 	return *this;
 }
@@ -641,13 +542,14 @@ tsData &tsData::operator+= (const_pointer data) /* zero terminated */
 tsData &tsData::operator+= (value_type data)
 {
 	tsData::size_type len = 0;
-	tsData::size_type oldUsed = m_used;
+	tsData::size_type oldUsed = size();
 	//	if ( data != nullptr )
 	{
 		len = 1;
 
-		resize(m_used + len);
-		m_data[oldUsed] = data;
+		resize(size() + len);
+        pointer ptr = rawData();
+		ptr[oldUsed] = data;
 	}
 	return *this;
 }
@@ -661,7 +563,7 @@ int tsData::compare(const tsData& str) const
 	size_type count = MIN(size(), str.size());
 	int diff = 0;
 
-	diff = memcmp(m_data, str.m_data, count);
+	diff = memcmp(c_str(), str.c_str(), count);
 	if (diff != 0)
 		return diff;
 	if (size() > str.size())
@@ -684,7 +586,7 @@ int tsData::compare(const_pointer s) const
 	size_type count = MIN(size(), len);
 	int diff = 0;
 
-	diff = memcmp(m_data, s, count);
+	diff = memcmp(c_str(), s, count);
 	if (diff != 0)
 		return diff;
 	if (size() > len)
@@ -747,7 +649,7 @@ tsData::size_type tsData::copy(pointer dest, size_type count, size_type pos) con
 		throw std::out_of_range("pos");
 	if (count + pos > size())
 		count = size() - pos;
-	memcpy(dest, &m_data[pos], sizeof(value_type) * count);
+	memcpy(dest, &c_str()[pos], sizeof(value_type) * count);
 	return count;
 }
 _Post_satisfies_(this->m_data != nullptr) void tsData::resize(size_type newSize)
@@ -756,43 +658,37 @@ _Post_satisfies_(this->m_data != nullptr) void tsData::resize(size_type newSize)
 }
 _Post_satisfies_(this->m_data != nullptr) void tsData::resize(size_type newSize, value_type value)
 {
-	reserve(newSize);
-	if (capacity() < newSize)
+    uint32_t oldSize = size();
+
+    if (!tsResizeBuffer(_data, newSize))
 		throw std::bad_alloc();
 
-	if (newSize > m_used)
+    if (newSize > oldSize)
 	{
-		memset(&m_data[m_used], value, newSize - m_used);
-		m_used = newSize;
-	}
-	else if (newSize < m_used)
-	{
-		memset(&m_data[newSize], 0, m_used - newSize);
-		m_used = newSize;
+        memset(&rawData()[oldSize], value, newSize - oldSize);
 	}
 }
 void tsData::swap(tsData &obj)
 {
-	std::swap(m_data, obj.m_data);
-	std::swap(m_used, obj.m_used);
-	std::swap(m_allocated, obj.m_allocated);
+	std::swap(_data, obj._data);
 }
 
 tsData::size_type tsData::find(const tsData& str, size_type pos) const
 {
 	size_type i;
 	size_type len = 0;
+    const_pointer ptr = c_str();
 
 	len = str.size();
 	if (len == 0)
 		return npos;
 
-	if (pos + len > m_used)
+	if (pos + len > size())
 		return npos;
-	for (i = pos; i < m_used - len + 1; i++)
+	for (i = pos; i < size() - len + 1; i++)
 	{
 		const_pointer in_data_c_str = str.c_str();
-		if (memcmp(in_data_c_str, &m_data[i], len) == 0)
+		if (memcmp(in_data_c_str, &ptr[i], len) == 0)
 		{
 			return i;
 		}
@@ -805,15 +701,16 @@ tsData::size_type tsData::find(const_pointer s, size_type pos, size_type count) 
 		throw std::invalid_argument("s");
 
 	size_type i;
+    const_pointer ptr = c_str();
 
 	if (count == 0)
 		return npos;
 
-	if (pos + count > m_used)
+	if (pos + count > size())
 		return npos;
-	for (i = pos; i < m_used - count + 1; i++)
+	for (i = pos; i < size() - count + 1; i++)
 	{
-		if (memcmp(s, &m_data[i], count) == 0)
+		if (memcmp(s, &ptr[i], count) == 0)
 		{
 			return i;
 		}
@@ -827,15 +724,16 @@ tsData::size_type tsData::find(const_pointer s, size_type pos) const
 
 	size_type i;
 	size_type len;
+    const_pointer ptr = c_str();
 
 	len = (size_type)strlen((const char*)s);
 	if (len == 0)
 		return npos;
-	if (pos + len > m_used)
+	if (pos + len > size())
 		return npos;
-	for (i = pos; i < m_used - len + 1; i++)
+	for (i = pos; i < size() - len + 1; i++)
 	{
-		if (memcmp(s, &m_data[i], len) == 0)
+		if (memcmp(s, &ptr[i], len) == 0)
 		{
 			return i;
 		}
@@ -845,12 +743,13 @@ tsData::size_type tsData::find(const_pointer s, size_type pos) const
 tsData::size_type tsData::find(value_type ch, size_type pos) const
 {
 	size_type i;
+    const_pointer ptr = c_str();
 
-	if (pos >= m_used)
+	if (pos >= size())
 		return npos;
-	for (i = pos; i < m_used; i++)
+	for (i = pos; i < size(); i++)
 	{
-		if (m_data[i] == ch)
+		if (ptr[i] == ch)
 		{
 			return i;
 		}
@@ -869,10 +768,11 @@ tsData::size_type tsData::rfind(const tsData& str, size_type pos) const
 		pos = size() - count;
 
 	difference_type i;
+    const_pointer ptr = c_str();
 
 	for (i = pos; i >= 0; i--)
 	{
-		if (memcmp(str.c_str(), &m_data[i], count) == 0)
+		if (memcmp(str.c_str(), &ptr[i], count) == 0)
 		{
 			return (size_type)i;
 		}
@@ -891,10 +791,11 @@ tsData::size_type tsData::rfind(const_pointer s, size_type pos, size_type count)
 		pos = size() - count;
 
 	difference_type i;
+    const_pointer ptr = c_str();
 
 	for (i = pos; i >= 0; i--)
 	{
-		if (memcmp(s, &m_data[i], count) == 0)
+		if (memcmp(s, &ptr[i], count) == 0)
 		{
 			return (size_type)i;
 		}
@@ -918,10 +819,11 @@ tsData::size_type tsData::rfind(value_type ch, size_type pos) const
 		pos = size() - 1;
 
 	difference_type i;
+    const_pointer ptr = c_str();
 
 	for (i = pos; i >= 0; i--)
 	{
-		if (m_data[i] == ch)
+		if (ptr[i] == ch)
 		{
 			return (size_type)i;
 		}
@@ -938,13 +840,14 @@ tsData::size_type tsData::find_first_of(const_pointer s, size_type pos, size_typ
 	if (s == nullptr || count == 0)
 		return npos;
 	size_type i;
+    const_pointer ptr = c_str();
 
 	if (pos >= size())
 		return npos;
 
-	for (i = pos; i < m_used; i++)
+	for (i = pos; i < size(); i++)
 	{
-		if (memchr(s, m_data[i], count) != nullptr)
+		if (memchr(s, ptr[i], count) != nullptr)
 		{
 			return i;
 		}
@@ -971,13 +874,14 @@ tsData::size_type tsData::find_first_not_of(const_pointer s, size_type pos, size
 	if (s == nullptr || count == 0)
 		return npos;
 	size_type i;
+    const_pointer ptr = c_str();
 
 	if (pos >= size())
 		return npos;
 
-	for (i = pos; i < m_used; i++)
+	for (i = pos; i < size(); i++)
 	{
-		if (memchr(s, m_data[i], count) == nullptr)
+		if (memchr(s, ptr[i], count) == nullptr)
 		{
 			return i;
 		}
@@ -993,13 +897,14 @@ tsData::size_type tsData::find_first_not_of(const_pointer s, size_type pos) cons
 tsData::size_type tsData::find_first_not_of(value_type ch, size_type pos) const
 {
 	size_type i;
+    const_pointer ptr = c_str();
 
 	if (pos >= size())
 		return npos;
 
-	for (i = pos; i < m_used; i++)
+	for (i = pos; i < size(); i++)
 	{
-		if (m_data[i] != ch)
+		if (ptr[i] != ch)
 		{
 			return i;
 		}
@@ -1016,13 +921,14 @@ tsData::size_type tsData::find_last_of(const_pointer s, size_type pos, size_type
 	if (s == nullptr || count == 0)
 		return npos;
 	difference_type i;
+    const_pointer ptr = c_str();
 
 	if (pos >= size())
 		pos = size() - 1;
 
 	for (i = pos; i >= 0; --i)
 	{
-		if (memchr(s, m_data[i], count) != nullptr)
+		if (memchr(s, ptr[i], count) != nullptr)
 		{
 			return (size_type)i;
 		}
@@ -1049,13 +955,14 @@ tsData::size_type tsData::find_last_not_of(const_pointer s, size_type pos, size_
 	if (s == nullptr || count == 0)
 		return npos;
 	difference_type i;
+    const_pointer ptr = c_str();
 
 	if (pos >= size())
 		pos = size() - 1;
 
 	for (i = pos; i >= 0; --i)
 	{
-		if (memchr(s, m_data[i], count) == nullptr)
+		if (memchr(s, ptr[i], count) == nullptr)
 		{
 			return (size_type)i;
 		}
@@ -1071,13 +978,14 @@ tsData::size_type tsData::find_last_not_of(const_pointer s, size_type pos) const
 tsData::size_type tsData::find_last_not_of(value_type ch, size_type pos) const
 {
 	difference_type i;
+    const_pointer ptr = c_str();
 
 	if (pos >= size())
 		pos = size() - 1;
 
 	for (i = pos; i >= 0; --i)
 	{
-		if (m_data[i] != ch)
+		if (ptr[i] != ch)
 		{
 			return (size_type)i;
 		}
@@ -1279,7 +1187,7 @@ static bool  base64Encode(const char *dtable,
 	uint32_t * const     pulOutSize) /* out */
 {
 	uint32_t i, j, loopcount;
-	BOOL done = FALSE;
+	bool done = false;
 	uint32_t sz;
 
 	if (pInput == nullptr)
@@ -1332,7 +1240,7 @@ static bool  base64Encode(const char *dtable,
 				i++;
 			}
 			else {
-				done = TRUE;
+				done = true;
 				break;
 			}
 		}
@@ -1416,7 +1324,7 @@ void  tsData::FromBase64(const char* pInput, bool base64Url, bool padWithEquals)
 			 /* create the output buffer */
 	resize(sz);
 
-	outbuf = m_data;
+	outbuf = rawData();
 
 	/*  Create the Base64 alphabet table */
 	for (i = 0; i < 255; i++) {
@@ -1680,7 +1588,7 @@ void tsData::FromOIDString(const char* inValue)
 
 	clear();
 
-	p = strtok_s(str.rawData(), ".", &token);
+	p = tsStrTok(str.rawData(), ".", &token);
 	while (p != nullptr)
 	{
 		if (partNumber == 1)
@@ -1697,7 +1605,7 @@ void tsData::FromOIDString(const char* inValue)
 		}
 
 		partNumber++;
-		p = strtok_s(nullptr, ".", &token);
+		p = tsStrTok(nullptr, ".", &token);
 	}
 }
 tsData tsData::substring(size_type start, size_type length) const
@@ -1715,8 +1623,9 @@ tsData& tsData::insert(size_type index, size_type count, char ch)
 	size_type oldsize = size();
 
 	resize(size() + count);
-	memmove(&m_data[index + count], &m_data[index], sizeof(value_type) * (oldsize - index));
-	memset(&m_data[index], ch, count);
+    pointer ptr = rawData();
+	memmove(&ptr[index + count], &ptr[index], sizeof(value_type) * (oldsize - index));
+	memset(&ptr[index], ch, count);
 	return *this;
 }
 tsData& tsData::insert(size_type index, char ch)
@@ -1724,8 +1633,9 @@ tsData& tsData::insert(size_type index, char ch)
 	size_type oldsize = size();
 
 	resize(size() + 1);
-	memmove(&m_data[index + 1], &m_data[index], sizeof(value_type) * (oldsize - index));
-	m_data[index] = ch;
+    pointer ptr = rawData();
+	memmove(&ptr[index + 1], &ptr[index], sizeof(value_type) * (oldsize - index));
+	ptr[index] = ch;
 	return *this;
 }
 tsData& tsData::insert(size_type index, const char* s)
@@ -1737,8 +1647,9 @@ tsData& tsData::insert(size_type index, const char* s)
 	size_type count = (size_type)strlen(s);
 
 	resize(size() + count);
-	memmove(&m_data[index + count], &m_data[index], sizeof(value_type) * (oldsize - index));
-	memcpy(&m_data[index], s, count);
+    pointer ptr = rawData();
+	memmove(&ptr[index + count], &ptr[index], sizeof(value_type) * (oldsize - index));
+	memcpy(&ptr[index], s, count);
 	return *this;
 }
 tsData& tsData::insert(size_type index, const char* s, size_type count)
@@ -1749,8 +1660,9 @@ tsData& tsData::insert(size_type index, const char* s, size_type count)
 	size_type oldsize = size();
 
 	resize(size() + count);
-	memmove(&m_data[index + count], &m_data[index], sizeof(value_type) * (oldsize - index));
-	memcpy(&m_data[index], s, count);
+    pointer ptr = rawData();
+	memmove(&ptr[index + count], &ptr[index], sizeof(value_type) * (oldsize - index));
+	memcpy(&ptr[index], s, count);
 	return *this;
 }
 void tsData::push_back(char ch)
@@ -1775,8 +1687,9 @@ tsData &tsData::assign(int16_t val)
 	size_type last = 0;
 
 	resize(2);
-	m_data[last++] = (value_type)(val >> 8);
-	m_data[last] = (value_type)(val);
+    pointer ptr = rawData();
+	ptr[last++] = (value_type)(val >> 8);
+	ptr[last] = (value_type)(val);
 	return *this;
 }
 tsData &tsData::assign(int32_t val)
@@ -1784,10 +1697,11 @@ tsData &tsData::assign(int32_t val)
 	size_type last = 0;
 
 	resize(4);
-	m_data[last++] = (value_type)(val >> 24);
-	m_data[last++] = (value_type)(val >> 16);
-	m_data[last++] = (value_type)(val >> 8);
-	m_data[last] = (value_type)(val);
+    pointer ptr = rawData();
+	ptr[last++] = (value_type)(val >> 24);
+	ptr[last++] = (value_type)(val >> 16);
+	ptr[last++] = (value_type)(val >> 8);
+	ptr[last] = (value_type)(val);
 	return *this;
 }
 tsData &tsData::assign(int64_t val)
@@ -1795,14 +1709,15 @@ tsData &tsData::assign(int64_t val)
 	size_type last = 0;
 
 	resize(8);
-	m_data[last++] = (value_type)(val >> 56);
-	m_data[last++] = (value_type)(val >> 48);
-	m_data[last++] = (value_type)(val >> 40);
-	m_data[last++] = (value_type)(val >> 32);
-	m_data[last++] = (value_type)(val >> 24);
-	m_data[last++] = (value_type)(val >> 16);
-	m_data[last++] = (value_type)(val >> 8);
-	m_data[last] = (value_type)(val);
+    pointer ptr = rawData();
+	ptr[last++] = (value_type)(val >> 56);
+	ptr[last++] = (value_type)(val >> 48);
+	ptr[last++] = (value_type)(val >> 40);
+	ptr[last++] = (value_type)(val >> 32);
+	ptr[last++] = (value_type)(val >> 24);
+	ptr[last++] = (value_type)(val >> 16);
+	ptr[last++] = (value_type)(val >> 8);
+	ptr[last] = (value_type)(val);
 	return *this;
 }
 tsData &tsData::assign(uint16_t val)
@@ -1810,8 +1725,9 @@ tsData &tsData::assign(uint16_t val)
 	size_type last = 0;
 
 	resize(2);
-	m_data[last++] = (value_type)(val >> 8);
-	m_data[last] = (value_type)(val);
+    pointer ptr = rawData();
+	ptr[last++] = (value_type)(val >> 8);
+	ptr[last] = (value_type)(val);
 	return *this;
 }
 tsData &tsData::assign(uint32_t val)
@@ -1819,10 +1735,11 @@ tsData &tsData::assign(uint32_t val)
 	size_type last = 0;
 
 	resize(4);
-	m_data[last++] = (value_type)(val >> 24);
-	m_data[last++] = (value_type)(val >> 16);
-	m_data[last++] = (value_type)(val >> 8);
-	m_data[last] = (value_type)(val);
+    pointer ptr = rawData();
+	ptr[last++] = (value_type)(val >> 24);
+	ptr[last++] = (value_type)(val >> 16);
+	ptr[last++] = (value_type)(val >> 8);
+	ptr[last] = (value_type)(val);
 	return *this;
 }
 tsData &tsData::assign(uint64_t val)
@@ -1830,14 +1747,15 @@ tsData &tsData::assign(uint64_t val)
 	size_type last = 0;
 
 	resize(8);
-	m_data[last++] = (value_type)(val >> 56);
-	m_data[last++] = (value_type)(val >> 48);
-	m_data[last++] = (value_type)(val >> 40);
-	m_data[last++] = (value_type)(val >> 32);
-	m_data[last++] = (value_type)(val >> 24);
-	m_data[last++] = (value_type)(val >> 16);
-	m_data[last++] = (value_type)(val >> 8);
-	m_data[last] = (value_type)(val);
+    pointer ptr = rawData();
+	ptr[last++] = (value_type)(val >> 56);
+	ptr[last++] = (value_type)(val >> 48);
+	ptr[last++] = (value_type)(val >> 40);
+	ptr[last++] = (value_type)(val >> 32);
+	ptr[last++] = (value_type)(val >> 24);
+	ptr[last++] = (value_type)(val >> 16);
+	ptr[last++] = (value_type)(val >> 8);
+	ptr[last] = (value_type)(val);
 	return *this;
 }
 
@@ -1853,9 +1771,9 @@ tsData &tsData::append(const char* data, size_type count)
 		return *this;
 	}
 
-	tsData::size_type oldUsed = m_used;
+	tsData::size_type oldUsed = size();
 	resize(oldUsed + count);
-	memcpy(&m_data[oldUsed], data, count * sizeof(value_type));
+	memcpy(&rawData()[oldUsed], data, count * sizeof(value_type));
 
 	return *this;
 }
@@ -1866,9 +1784,9 @@ tsData &tsData::append(const char* data)
 		return *this;
 	}
 	uint32_t count = (size_type)strlen(data);
-	tsData::size_type oldUsed = m_used;
+	tsData::size_type oldUsed = size();
 	resize(oldUsed + count);
-	memcpy(&m_data[oldUsed], data, count * sizeof(value_type));
+	memcpy(&rawData()[oldUsed], data, count * sizeof(value_type));
 
 	return *this;
 }
@@ -1877,9 +1795,10 @@ tsData &tsData::append(std::initializer_list<char> list)
 	size_type pos = size();
 
 	resize(size() + (size_type)list.size());
+    pointer ptr = rawData();
 	for (auto it = list.begin(); it != list.end(); ++it)
 	{
-		m_data[pos++] = *it;
+		ptr[pos++] = *it;
 	}
 	return *this;
 }
@@ -1898,8 +1817,9 @@ tsData &tsData::append(int16_t val)
 	size_type last = size();
 
 	resize(size() + 2);
-	m_data[last++] = (value_type)(val >> 8);
-	m_data[last] = (value_type)(val);
+    pointer ptr = rawData();
+	ptr[last++] = (value_type)(val >> 8);
+	ptr[last] = (value_type)(val);
 	return *this;
 }
 tsData &tsData::append(int32_t val)
@@ -1907,10 +1827,11 @@ tsData &tsData::append(int32_t val)
 	size_type last = size();
 
 	resize(size() + 4);
-	m_data[last++] = (value_type)(val >> 24);
-	m_data[last++] = (value_type)(val >> 16);
-	m_data[last++] = (value_type)(val >> 8);
-	m_data[last] = (value_type)(val);
+    pointer ptr = rawData();
+	ptr[last++] = (value_type)(val >> 24);
+	ptr[last++] = (value_type)(val >> 16);
+	ptr[last++] = (value_type)(val >> 8);
+	ptr[last] = (value_type)(val);
 	return *this;
 }
 tsData &tsData::append(int64_t val)
@@ -1918,14 +1839,15 @@ tsData &tsData::append(int64_t val)
 	size_type last = size();
 
 	resize(size() + 8);
-	m_data[last++] = (value_type)(val >> 56);
-	m_data[last++] = (value_type)(val >> 48);
-	m_data[last++] = (value_type)(val >> 40);
-	m_data[last++] = (value_type)(val >> 32);
-	m_data[last++] = (value_type)(val >> 24);
-	m_data[last++] = (value_type)(val >> 16);
-	m_data[last++] = (value_type)(val >> 8);
-	m_data[last] = (value_type)(val);
+    pointer ptr = rawData();
+	ptr[last++] = (value_type)(val >> 56);
+	ptr[last++] = (value_type)(val >> 48);
+	ptr[last++] = (value_type)(val >> 40);
+	ptr[last++] = (value_type)(val >> 32);
+	ptr[last++] = (value_type)(val >> 24);
+	ptr[last++] = (value_type)(val >> 16);
+	ptr[last++] = (value_type)(val >> 8);
+	ptr[last] = (value_type)(val);
 	return *this;
 }
 tsData &tsData::append(uint16_t val)
@@ -1933,8 +1855,9 @@ tsData &tsData::append(uint16_t val)
 	size_type last = size();
 
 	resize(size() + 2);
-	m_data[last++] = (value_type)(val >> 8);
-	m_data[last] = (value_type)(val);
+    pointer ptr = rawData();
+	ptr[last++] = (value_type)(val >> 8);
+	ptr[last] = (value_type)(val);
 	return *this;
 }
 tsData &tsData::append(uint32_t val)
@@ -1942,10 +1865,11 @@ tsData &tsData::append(uint32_t val)
 	size_type last = size();
 
 	resize(size() + 4);
-	m_data[last++] = (value_type)(val >> 24);
-	m_data[last++] = (value_type)(val >> 16);
-	m_data[last++] = (value_type)(val >> 8);
-	m_data[last] = (value_type)(val);
+    pointer ptr = rawData();
+	ptr[last++] = (value_type)(val >> 24);
+	ptr[last++] = (value_type)(val >> 16);
+	ptr[last++] = (value_type)(val >> 8);
+	ptr[last] = (value_type)(val);
 	return *this;
 }
 tsData &tsData::append(uint64_t val)
@@ -1953,14 +1877,15 @@ tsData &tsData::append(uint64_t val)
 	size_type last = size();
 
 	resize(size() + 8);
-	m_data[last++] = (value_type)(val >> 56);
-	m_data[last++] = (value_type)(val >> 48);
-	m_data[last++] = (value_type)(val >> 40);
-	m_data[last++] = (value_type)(val >> 32);
-	m_data[last++] = (value_type)(val >> 24);
-	m_data[last++] = (value_type)(val >> 16);
-	m_data[last++] = (value_type)(val >> 8);
-	m_data[last] = (value_type)(val);
+    pointer ptr = rawData();
+	ptr[last++] = (value_type)(val >> 56);
+	ptr[last++] = (value_type)(val >> 48);
+	ptr[last++] = (value_type)(val >> 40);
+	ptr[last++] = (value_type)(val >> 32);
+	ptr[last++] = (value_type)(val >> 24);
+	ptr[last++] = (value_type)(val >> 16);
+	ptr[last++] = (value_type)(val >> 8);
+	ptr[last] = (value_type)(val);
 	return *this;
 }
 
@@ -1971,13 +1896,13 @@ tsData &tsData::operator+= (const char* data) /* zero terminated */
 tsData &tsData::operator+= (char data)
 {
 	tsData::size_type len = 0;
-	tsData::size_type oldUsed = m_used;
+	tsData::size_type oldUsed = size();
 	//	if ( data != nullptr )
 	{
 		len = 1;
 
-		resize(m_used + len);
-		m_data[oldUsed] = data;
+		resize(size() + len);
+		rawData()[oldUsed] = data;
 	}
 	return *this;
 }
@@ -2016,7 +1941,7 @@ int tsData::compare(const char* s) const
 	size_type count = MIN(size(), len);
 	int diff = 0;
 
-	diff = memcmp(m_data, s, count);
+	diff = memcmp(c_str(), s, count);
 	if (diff != 0)
 		return diff;
 	if (size() > len)
@@ -2039,7 +1964,7 @@ int tsData::compare(size_type pos1, size_type count1, const char* s, size_type c
 	size_type count = MIN(availableCount, len);
 	int diff = 0;
 
-	diff = memcmp(&m_data[pos1], s, count);
+	diff = memcmp(&c_str()[pos1], s, count);
 	if (diff != 0)
 		return diff;
 	if (availableCount > len)
@@ -2070,58 +1995,65 @@ tsData& tsData::replace(size_type pos, size_type count, size_type count2, char c
 void tsData::reverse()
 {
 	value_type value;
+    pointer ptr = rawData();
+    uint32_t sz = size();
 
-	for (unsigned int i = 0; i < (m_used >> 1); i++)
+	for (unsigned int i = 0; i < (sz >> 1); i++)
 	{
-		value = m_data[i];
-		m_data[i] = m_data[m_used - i - 1];
-		m_data[m_used - i - 1] = value;
+		value = ptr[i];
+		ptr[i] = ptr[sz - i - 1];
+		ptr[sz - i - 1] = value;
 	}
 }
 tsData &tsData::XOR(const tsData &value)
 {
 	size_type len = value.size();
+    pointer ptr = rawData();
 
 	if (size() < len)
 		resize(len);
 
 	for (unsigned int i = 0; i < len; i++)
 	{
-		m_data[i] ^= value[i];
+		ptr[i] ^= value[i];
 	}
 	return *this;
 }
 tsData &tsData::AND(const tsData &value)
 {
 	size_type len = value.size();
+    pointer ptr = rawData();
 
 	if (size() < len)
 		resize(len);
 
 	for (unsigned int i = 0; i < len; i++)
 	{
-		m_data[i] &= value[i];
+		ptr[i] &= value[i];
 	}
 	return *this;
 }
 tsData &tsData::OR(const tsData &value)
 {
 	size_type len = value.size();
+    pointer ptr = rawData();
 
 	if (size() < len)
 		resize(len);
 
 	for (unsigned int i = 0; i < len; i++)
 	{
-		m_data[i] |= value[i];
+		ptr[i] |= value[i];
 	}
 	return *this;
 }
 tsData &tsData::NOT()
 {
-	for (unsigned int i = 0; i < m_used; i++)
+    pointer ptr = rawData();
+
+	for (unsigned int i = 0; i < size(); i++)
 	{
-		m_data[i] = ~m_data[i];
+		ptr[i] = ~ptr[i];
 	}
 	return *this;
 }
@@ -2144,12 +2076,13 @@ tsData tsData::left(size_type length) const
 tsData &tsData::padLeft(size_type length, value_type value)
 {
 	size_type oldLen = size();
+    pointer ptr = rawData();
 
 	if (oldLen < length)
 	{
 		resize(length);
-		memmove(&m_data[length - oldLen], &m_data[0], oldLen);
-		memset(m_data, value, length - oldLen);
+		memmove(&ptr[length - oldLen], &ptr[0], oldLen);
+		memset(ptr, value, length - oldLen);
 	}
 	return *this;
 }
@@ -2178,17 +2111,18 @@ tsStringBase tsData::ToOIDString() const
 	tsStringBase tmp;
 	uint32_t value;
 	uint32_t posi = 1;
+    const_pointer ptr = c_str();
 
 	if (size() == 0)
 		return "";
 
-	value = m_data[0];
+	value = ptr[0];
 	tmp.append((value / 40)).append(".").append((value % 40));
 	value = 0;
 	while (posi < size())
 	{
-		value = (value << 7) | (m_data[posi] & 0x7f);
-		if ((m_data[posi] & 0x80) == 0)
+		value = (value << 7) | (ptr[posi] & 0x7f);
+		if ((ptr[posi] & 0x80) == 0)
 		{
 			tmp.append(".").append(value);
 			value = 0;
@@ -2206,7 +2140,7 @@ tsData::UnicodeEncodingType tsData::EncodingType() const
 
 	if (size() > 3)
 	{
-		const uint8_t *p = (const uint8_t *)m_data;
+		const uint8_t *p = (const uint8_t *)c_str();
 
 		if (p[0] == 0xEF && p[1] == 0xBB && p[2] == 0xBF)
 		{
@@ -2335,7 +2269,7 @@ bool tsData::hasEncodingBOM() const
 
 	if (size() > 3)
 	{
-		const uint8_t *p = (const uint8_t *)m_data;
+		const uint8_t *p = (const uint8_t *)c_str();
 
 		if (p[0] == 0xEF && p[1] == 0xBB && p[2] == 0xBF)
 		{
@@ -2428,10 +2362,10 @@ bool tsData::hasEncodingBOM(uint8_t *data, uint32_t size) const
 
 uint32_t tsData::BOMByteCount() const
 {
-	return BOMByteCount(m_data, size());
+	return BOMByteCount(c_str(), size());
 }
 
-uint32_t tsData::BOMByteCount(uint8_t *data, uint32_t size) const
+uint32_t tsData::BOMByteCount(const uint8_t *data, uint32_t size) const
 {
 	int count = 0;
 
@@ -2475,46 +2409,47 @@ tsStringBase tsData::ToUtf8String() const
 {
 	tsStringBase tmp;
 	uint32_t destCount;
-	UTF8 *dest;
-	const UTF16 *src16;
-	const UTF32 *src32;
+	TSUtf8 *dest;
+	const TSUtf16 *src16;
+	const TSUtf32 *src32;
 	uint32_t BOMcount = BOMByteCount();
+    const_pointer ptr = c_str();
 
 	if (BOMcount > 0)
 	{
 		switch (EncodingType())
 		{
 		case encode_Utf16BE:
-			src16 = (UTF16*)(m_data + BOMcount);
-			destCount = UTF16toUTF8Length(src16, (UTF16*)(m_data + size()), true, lenientConversion);
+			src16 = (TSUtf16*)(ptr + BOMcount);
+			destCount = tsUtf8LenFromUtf16BE(src16, false);
 			tmp.resize(destCount);
-			dest = (UTF8*)tmp.rawData();
-			src16 = (UTF16*)(m_data + BOMcount);
-			ConvertUTF16toUTF8(&src16, (UTF16*)(m_data + size()), &dest, dest + tmp.size(), true, lenientConversion);
+			dest = (TSUtf8*)tmp.rawData();
+			src16 = (TSUtf16*)(ptr + BOMcount);
+            tsUtf16BEToUtf8(src16, dest, (uint32_t)tmp.size(), false);
 			break;
 		case encode_Utf16LE:
-			src16 = (UTF16*)(m_data + BOMcount);
-			destCount = UTF16toUTF8Length(src16, (UTF16*)(m_data + size()), false, lenientConversion);
+			src16 = (TSUtf16*)(ptr + BOMcount);
+			destCount = tsUtf8LenFromUtf16LE(src16, false);
 			tmp.resize(destCount);
-			dest = (UTF8*)tmp.rawData();
-			src16 = (UTF16*)(m_data + BOMcount);
-			ConvertUTF16toUTF8(&src16, (UTF16*)(m_data + size()), &dest, dest + tmp.size(), false, lenientConversion);
+			dest = (TSUtf8*)tmp.rawData();
+			src16 = (TSUtf16*)(ptr + BOMcount);
+            tsUtf16LEToUtf8(src16, dest, (uint32_t)tmp.size(), false);
 			break;
 		case encode_Utf32BE:
-			src32 = (UTF32*)(m_data + BOMcount);
-			destCount = UTF32toUTF8Length(src32, (UTF32*)(m_data + size()), true, lenientConversion);
+			src32 = (TSUtf32*)(ptr + BOMcount);
+			destCount = tsUtf8LenFromUtf32BE(src32, false);
 			tmp.resize(destCount);
-			dest = (UTF8*)tmp.rawData();
-			src32 = (UTF32*)(m_data + BOMcount);
-			ConvertUTF32toUTF8(&src32, (UTF32*)(m_data + size()), &dest, dest + tmp.size(), true, lenientConversion);
+			dest = (TSUtf8*)tmp.rawData();
+			src32 = (TSUtf32*)(ptr + BOMcount);
+            tsUtf32BEToUtf8(src32, dest, (uint32_t)tmp.size(), false);
 			break;
 		case encode_Utf32LE:
-			src32 = (UTF32*)(m_data + BOMcount);
-			destCount = UTF32toUTF8Length(src32, (UTF32*)(m_data + size()), false, lenientConversion);
+			src32 = (TSUtf32*)(ptr + BOMcount);
+			destCount = tsUtf8LenFromUtf32LE(src32, false);
 			tmp.resize(destCount);
-			dest = (UTF8*)tmp.rawData();
-			src32 = (UTF32*)(m_data + BOMcount);
-			ConvertUTF32toUTF8(&src32, (UTF32*)(m_data + size()), &dest, dest + tmp.size(), false, lenientConversion);
+			dest = (TSUtf8*)tmp.rawData();
+			src32 = (TSUtf32*)(ptr + BOMcount);
+            tsUtf32BEToUtf8(src32, dest, (uint32_t)tmp.size(), false);
 			break;
 
 		default:
@@ -2607,10 +2542,11 @@ tsStringBase tsData::ToHexDump() const
 	size_type posi = 0, len;
 	tsData tmp;
 	tsStringBase output, tmpS;
+    uint32_t sz = (uint32_t)size();
 
-	while (posi < m_used)
+	while (posi < sz)
 	{
-		len = m_used - posi;
+		len = sz - posi;
 		if (len > 16)
 			len = 16;
 
@@ -2637,12 +2573,12 @@ tsStringBase tsData::ToBase64(bool base64Url, bool padWithEquals) const
 	tsStringBase outValue;
 
 	outValue.erase();
-	if (!base64Encode(base64Url ? dtableUrl : dtableNormal, padWithEquals, m_data, m_used, nullptr, &len))
+	if (!base64Encode(base64Url ? dtableUrl : dtableNormal, padWithEquals, c_str(), size(), nullptr, &len))
 		outValue.erase();
 	else
 	{
 		outValue.resize(len);
-		if (!base64Encode(base64Url ? dtableUrl : dtableNormal, padWithEquals, m_data, m_used, outValue.rawData(), &len) ||
+		if (!base64Encode(base64Url ? dtableUrl : dtableNormal, padWithEquals, c_str(), size(), outValue.rawData(), &len) ||
 			len == 0)
 		{
 			outValue.erase();
@@ -2691,11 +2627,12 @@ tsData &tsData::increment(value_type step)
 {
 	difference_type offset = size() - 1;
 	int tmp;
+    pointer ptr = rawData();
 
 	while (offset >= 0)
 	{
-		tmp = m_data[offset] + step;
-		m_data[offset] = (value_type)tmp;
+		tmp = ptr[offset] + step;
+		ptr[offset] = (value_type)tmp;
 		tmp >>= 8;
 		if (tmp == 0)
 			break;
@@ -2709,11 +2646,12 @@ tsData &tsData::decrement(value_type step)
 {
 	difference_type offset = size() - 1;
 	int tmp;
+    pointer ptr = rawData();
 
 	while (offset >= 0)
 	{
-		tmp = m_data[offset] - step;
-		m_data[offset] = (value_type)tmp;
+		tmp = ptr[offset] - step;
+		ptr[offset] = (value_type)tmp;
 		tmp >>= 8;
 		if (tmp == 0)
 			break;
@@ -2728,7 +2666,7 @@ void  tsData::copyFrom(const tsData &obj)
 	if (&obj == this)
 		return;
 	resize(obj.size());
-	memcpy(m_data, obj.m_data, m_used);
+	memcpy(rawData(), obj.c_str(), size());
 }
 
 //std::ostream & operator << (std::ostream &Output, const tsData &obj)

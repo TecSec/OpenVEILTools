@@ -37,52 +37,7 @@
 
 #pragma once
 
-/// <summary>name value pair for the tsAttributeMap class</summary>
-struct __tsAttributeMapItem
-{
-	static void *operator new(std::size_t count) {
-		return cryptoNew(count);
-	}
-	static void *operator new[](std::size_t count) {
-		return cryptoNew(count);
-	}
-	static void operator delete(void *ptr) { cryptoDelete(ptr); }
-	static void operator delete[](void *ptr) { cryptoDelete(ptr); }
-
-	tsStringBase m_name;
-	tsStringBase m_value;
-	tsStringBase m_tag;
-	bool operator==(const __tsAttributeMapItem& obj) const { return m_name == obj.m_name; }
-	bool operator<(const __tsAttributeMapItem& obj) const { return m_name < obj.m_name; }
-	__tsAttributeMapItem()
-	{}
-	__tsAttributeMapItem(const __tsAttributeMapItem& obj) : m_name(obj.m_name), m_tag(obj.m_tag), m_value(obj.m_value)
-	{}
-	__tsAttributeMapItem(__tsAttributeMapItem&& obj) : m_name(std::move(obj.m_name)), m_tag(std::move(obj.m_tag)), m_value(std::move(obj.m_value))
-	{}
-	__tsAttributeMapItem& operator=(const __tsAttributeMapItem& obj)
-	{
-		if (this != &obj)
-		{
-			m_name = obj.m_name;
-			m_tag = obj.m_tag;
-			m_value = obj.m_value;
-		}
-		return *this;
-	}
-	__tsAttributeMapItem& operator=(__tsAttributeMapItem&& obj)
-	{
-		if (this != &obj)
-		{
-			m_name = std::move(obj.m_name);
-			m_tag = std::move(obj.m_tag);
-			m_value = std::move(obj.m_value);
-		}
-		return *this;
-	}
-};
-
-typedef std::vector<__tsAttributeMapItem> tsAttributeMapItemList;
+//typedef std::vector<__tsAttributeMapItem> tsAttributeMapItemList;
 
 /// <summary>definition of a Named value collection object</summary>
 class tsAttributeMap
@@ -104,6 +59,8 @@ public:
 	///
 	/// <param name="obj">.</param>
 	////////////////////////////////////////////////////////////////////////////////////////////////////
+    tsAttributeMap(TSNAME_VALUE_LIST list); // Takes ownership of the list data
+    tsAttributeMap(TSNAME_VALUE_LIST&& list); // Takes ownership of the list
 	tsAttributeMap(const tsAttributeMap &obj);
 	tsAttributeMap(tsAttributeMap &&obj);
 	////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -185,6 +142,7 @@ public:
 	/// <returns>true if it succeeds, false if it fails.</returns>
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	bool AddItem(const tsStringBase &name, const tsStringBase &value);
+    bool RenameItem(const tsStringBase &oldName, const tsStringBase &newName);
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	/// <summary>Adds an attribute to the list.</summary>
 	///
@@ -215,19 +173,19 @@ public:
 	 *
 	 * \param func The function.
 	 */
-	void remove_if(std::function<bool(const __tsAttributeMapItem& item)> func);
+	void remove_if(std::function<bool(const char* name, const char* item)> func);
 	/**
 	 * \brief Foreaches the given function.
 	 *
 	 * \param [in,out] func The function.
 	 */
-	void foreach(std::function<void(__tsAttributeMapItem& item)> func);
+	void foreach(std::function<void(const char* name, const char* item)> func);
 	/**
 	 * \brief Foreaches the given function.
 	 *
 	 * \param func The function.
 	 */
-	void foreach(std::function<void(const __tsAttributeMapItem& item)> func) const;
+	void foreach(std::function<void(const char* name, const char* item)> func) const;
 	/**
 	 * \brief First value that.
 	 *
@@ -235,7 +193,7 @@ public:
 	 *
 	 * \return A tsStringBase.
 	 */
-	tsStringBase first_value_that(std::function<bool(const __tsAttributeMapItem& item)> func) const;
+	tsStringBase first_value_that(std::function<bool(const char* name, const char* item)> func) const;
 	/**
 	 * \brief First name that.
 	 *
@@ -243,7 +201,7 @@ public:
 	 *
 	 * \return A tsStringBase.
 	 */
-	tsStringBase first_name_that(std::function<bool(const __tsAttributeMapItem& item)> func) const;
+	tsStringBase first_name_that(std::function<bool(const char* name, const char* item)> func) const;
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	/// <summary>Converts this list to Xml</summary>
 	///
@@ -269,7 +227,7 @@ protected:
 	void moveFrom(tsAttributeMap &&obj);
 
 protected:
-	tsAttributeMapItemList m_list;
+	mutable TSNAME_VALUE_LIST _list;
 };
 
 #endif // __TSATTRIBUTEMAP_H__

@@ -62,9 +62,7 @@ public:
 	tsStringBase(std::initializer_list<value_type> init);
 	template <class InputIt>
 	tsStringBase(InputIt first, InputIt last) :
-		m_data(nullptr),
-		m_used(0),
-		m_allocated(-1)
+		_data(tsCreateBuffer())
 	{
 		assign(first, last);
 	}
@@ -162,7 +160,7 @@ public:
 	///
 	/// <returns>The final size of the string in characters</returns>
 	////////////////////////////////////////////////////////////////////////////////////////////////////
-	_Post_satisfies_(this->m_data != nullptr) void resize(size_type newSize);
+	void resize(size_type newSize);
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	/// <summary>Resizes the string to a new size.</summary>
@@ -172,8 +170,8 @@ public:
 	///
 	/// <returns>The final size of the string in characters.</returns>
 	////////////////////////////////////////////////////////////////////////////////////////////////////
-	_Post_satisfies_(this->m_data != nullptr) void resize(size_type newSize, value_type value);
-	_Post_satisfies_(this->m_data != nullptr) void reserve(size_type newSize = 0);
+	void resize(size_type newSize, value_type value);
+	void reserve(size_type newSize = 0);
 	size_type capacity() const;
 	size_type max_size() const;
 	void push_back(value_type ch);
@@ -217,7 +215,7 @@ public:
 	/// \warning NOTE:  Do not access data beyond size() characters.
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	pointer data();
-	pointer rawData() { return data(); }
+    pointer rawData() { return (pointer)tsGetBufferDataPtr(_data); }
 	reference front();
 	const_reference front() const;
 	reference back();
@@ -344,9 +342,10 @@ public:
 	{
 		size_type oldsize = size();
 		resize(size() + (last - first));
+		char* ptr = rawData();
 		for (auto it = first; it != last; ++it)
 		{
-			m_data[oldsize++] = *it;
+			ptr[oldsize++] = *it;
 		}
 		return *this;
 	}
@@ -758,10 +757,7 @@ protected:
 	void copyFrom(const tsStringBase &obj);
 
 private:
-	pointer m_data; ///< the ponter to either m_defaultData or the allocated data for this string class
-					//value_type m_defaultData[TS_DEFAULT_STRING_SIZE]; ///< the default data array (used to
-	size_type m_used; ///< the number of characters currently in use for this string (length)
-	difference_type m_allocated; ///< how many characters are allocated for this string
+    mutable TSBYTE_BUFF _data;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

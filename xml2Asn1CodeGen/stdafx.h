@@ -48,40 +48,9 @@
 extern tsStringBase gOutputPath;
 extern tsStringBase gInputPath;
 extern tsStringBase gExportPath;
-extern bool gUseConst;
-extern bool gAsC;
+extern int gUseConst;
+extern int gAsC;
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-/// <summary>A macro that will reverse the byte order of a 2 byte entity regardless of the byte order of the machine</summary>
-///
-/// <remarks>This macro is a code block and therefore cannot be used like a function.</remarks>
-///
-/// <param name="x">2 bytes to process.</param>
-////////////////////////////////////////////////////////////////////////////////////////////////////
-#define SWAP_SHORT(x) { BYTE * y=(BYTE *)&x; BYTE temp=*y; *y= *(y+1); *(y+1) = temp; }
-////////////////////////////////////////////////////////////////////////////////////////////////////
-/// <summary>A macro that will reverse the byte order of a 4 byte entity regardless of the byte order of the machine</summary>
-///
-/// <remarks>This macro is a code block and therefore cannot be used like a function.</remarks>
-///
-/// <param name="x">4 bytes to process.</param>
-////////////////////////////////////////////////////////////////////////////////////////////////////
-#define SWAP_LONG(x) { BYTE * y=(BYTE *)&x; BYTE temp=*y; *y= *(y+3); *(y+3) = temp; temp = *(y+1); *(y+1) = *(y+2); *(y+2) = temp; }
-
-
-
-#ifdef _WIN32
-/// <summary>A macro that defines cross platform path separator character.</summary>
-#define XP_PATH_SEP_CHAR '\\'
-/// <summary>A macro that defines cross platform path separator string.</summary>
-#define XP_PATH_SEP_STR "\\"
-/// <summary>A macro that defines cross platform pathlist separator.</summary>
-#define XP_PATHLIST_SEPARATOR ';'
-#else
-#define XP_PATH_SEP_CHAR '/'
-#define XP_PATH_SEP_STR "/"
-#define XP_PATHLIST_SEPARATOR ':'
-#endif
 
 extern bool isBasicEleType(const tsStringBase& eleType);
 extern bool isSequence(const tsStringBase& eleType);

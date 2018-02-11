@@ -83,7 +83,7 @@ public:
     ///
     /// <returns>The parser error code for this tag.</returns>
     ////////////////////////////////////////////////////////////////////////////////////////////////////
-    virtual resultCodes StartNode (const tsStringBase &NodeName, tsAttributeMap &attributes, const tsStringBase &InnerXML, bool SingleNode, tsStringBase &Results) PURE;
+    virtual resultCodes StartNode (const tsStringBase &NodeName, const tsAttributeMap &attributes, const tsStringBase &InnerXML, bool SingleNode, tsStringBase &Results) PURE;
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     /// <summary>Called by the parser when an end node has been detected.</summary>
     ///

@@ -33,15 +33,6 @@ INCLUDE_DIRECTORIES(
     ${CMAKE_CURRENT_SOURCE_DIR} 
     )
 
-if(UNIX)
-set(UnixFiles
-    pevents.cpp
-    pevents.h
-)
-else()
-set(UnixFiles )
-endif()
-
 add_library(ToolsCore 
 	stdafx.cpp
 	stdafx.h
@@ -55,9 +46,6 @@ add_library(ToolsCore
 	tsXmlHelper.cpp
 	tsXmlNode.cpp
 	tsXmlParser.cpp
-	ConvertUTF.cpp
-	ConvertUTF.h
-	CryptoUtf16.cpp
 	../include/core.h
 	../include/tsData.h
 	../include/tsStringBase.h
@@ -67,8 +55,6 @@ add_library(ToolsCore
 	../include/tsXmlParser.h
 	../include/tsXmlParserCallback.h
 	../include/SimpleOpt.h
-	../include/CryptoUtf16.h
-        ${UnixFiles}
 	)
 add_precompiled_header(ToolsCore stdafx.h FORCEINCLUDE SOURCE_CXX stdafx.cpp)
 # set_target_properties(ToolsCore PROPERTIES FOLDER "BuildTools" )

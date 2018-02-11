@@ -232,14 +232,14 @@ public:
 			destList = "";
 			sql += "INSERT INTO " + r_node->Table()->Name() + " (";
 			const tsAttributeMap& map = r_node->Values();
-			map.foreach([&sourceList, &destList, this](const __tsAttributeMapItem& item) {
+				map.foreach([&sourceList, &destList, this](const char* name, const char* value) {
 				if (sourceList.size() > 0)
 				{
 					sourceList += ", ";
 					destList += ", ";
 				}
-				sourceList += item.m_name;
-				destList += StringToSQL(item.m_value);
+					sourceList += name;
+					destList += StringToSQL(value);
 			});
 			sql += sourceList + ") VALUES (" + destList + ");\r\n";
 		});

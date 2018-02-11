@@ -36,24 +36,13 @@ tsStringBase gPrefix;
 tsStringBase gBuildType;
 bool useC = false;
 
-enum {
-	OPT_HELP = 0, OPT_OUTPUT, OPT_BUILDTYPE, OPT_PREFIX, OPT_C_OUTPUT
-};
-
-CSimpleOpt::SOption g_rgOptions1[] =
+static struct ts_getopt_option long_options[] =
 {
-	{ OPT_HELP, "-?", SO_NONE },
-	{ OPT_HELP, "-h", SO_NONE },
-	{ OPT_HELP, "-help", SO_NONE },
-	{ OPT_HELP, "--help", SO_NONE },
-	{ OPT_C_OUTPUT, "-c", SO_NONE },
-	{ OPT_OUTPUT, "-o", SO_REQ_SEP },
-	{ OPT_OUTPUT, "--output", SO_REQ_SEP },
-	{ OPT_BUILDTYPE, "-b", SO_REQ_SEP },
-	{ OPT_BUILDTYPE, "--build", SO_REQ_SEP },
-	{ OPT_PREFIX, "-p", SO_REQ_SEP },
-	{ OPT_PREFIX, "--prefix", SO_REQ_SEP },
-	SO_END_OF_OPTIONS
+    { "output",  ts_required_argument, 0, 'o' },
+    { "build",  ts_required_argument, 0, 'b' },
+    { "prefix",  ts_required_argument, 0, 'p' },
+    { "help", ts_no_argument, 0, 'h' },
+    { 0, 0, 0, 0 }
 };
 
 static void Usage()
@@ -100,7 +89,6 @@ static void SendOutputToFiles(std::shared_ptr<SQLHelper> builder, std::vector<ts
 			xp_WriteText(fileNames[i], parts[i]);
 	}
 }
-
 static tsStringBase ToLower(const tsStringBase& value)
 {
 	tsStringBase tmp(value);
@@ -108,7 +96,6 @@ static tsStringBase ToLower(const tsStringBase& value)
 	tmp.ToLower();
 	return tmp;
 }
-
 static bool ProcessFile(const char *filename)
 {
 
@@ -241,37 +228,72 @@ static bool ProcessFile(const char *filename)
 	}
 }
 
-int main(int argc, char* argv[])
+int main(int argc, const char* argv[])
 {
-	CSimpleOpt args(argc, argv, g_rgOptions1, SO_O_NOERR | SO_O_ICASE | SO_O_SHORTARG);
+    int c;
+    int option_index;
 
-	while (args.Next())
-	{
-		if (args.LastError() == SO_SUCCESS)
-		{
-			if (args.OptionId() == OPT_HELP)
+#if defined(_DEBUG) && defined(_WIN32)
+    //_CrtSetBreakAlloc(268903);
+    //_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF); //  _CRTDBG_CHECK_ALWAYS_DF _CRTDBG_CHECK_EVERY_128_DF | _CRTDBG_DELAY_FREE_MEM_DF | |  
+    //TS_EnableHeapCheckOnEachAllocOrFree();
+#endif
+
+    if (argc == 1)
 			{
 				Usage();
-				return 0;
+        return 1;
 			}
-			else if (args.OptionId() == OPT_OUTPUT)
+
+    while (1)
 			{
-				gOutputPath = args.OptionArg();
-			}
-			else if (args.OptionId() == OPT_PREFIX)
-			{
-				gPrefix = args.OptionArg();
-			}
-			else if (args.OptionId() == OPT_BUILDTYPE)
-			{
-				gBuildType = args.OptionArg();
-			}
-            else if (args.OptionId() == OPT_C_OUTPUT)
+        /* getopt_long stores the option index here. */
+        option_index = 0;
+
+        c = ts_getopt_long(argc, argv, "cChHo:b:p:", long_options, &option_index);
+
+        /* Detect the end of the options. */
+        if (c == -1)
+            break;
+
+        switch (c)
+        {
+        case 0:
+            /* If this option set a flag, do nothing else now. */
+            if (long_options[option_index].flag != 0)
+                break;
+            printf("option %s", long_options[option_index].name);
+            if (ts_get_optarg())
+                printf(" with arg %s", ts_get_optarg());
+            printf("\n");
+            break;
+
+        case 'c':
+        case 'C':
                 useC = true;
+            break;
+
+        case 'b':
+            gBuildType = ts_get_optarg();
+            break;
+        case 'p':
+            gPrefix = ts_get_optarg();
+            break;
+        case 'o':
+            gOutputPath = ts_get_optarg();
+            break;
+        case '?':
+        case 'h':
+            Usage();
+            return 0;
+
+        default:
+            return(1);
 		}
 	}
 
-	if (args.FileCount() == 0)
+    /* Print any remaining command line arguments (not options). */
+    if (ts_get_optind() >= argc)
 	{
 		Usage();
 		return 1;
@@ -291,9 +313,9 @@ int main(int argc, char* argv[])
 		gOutputPath += XP_PATH_SEP_STR;
 	}
 
-	if (!xp_FileExists(gOutputPath))
+	if (!XP_FileExists(gOutputPath.c_str()))
 	{
-		xp_CreateDirectory(gOutputPath, false);
+		XP_CreateDirectory(gOutputPath.c_str(), false);
 	}
 
 	gBuildType.ToUpper();
@@ -314,9 +336,9 @@ int main(int argc, char* argv[])
 
 	try
 	{
-		for (int i = 0; i < args.FileCount(); i++)
+		for (int i = ts_get_optind(); i < argc; i++)
 		{
-			if (!ProcessFile(args.File(i)))
+			if (!ProcessFile(argv[i]))
 				return 1;
 		}
 	}

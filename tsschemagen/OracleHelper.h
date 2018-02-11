@@ -462,14 +462,14 @@ public:
 			sql += "INSERT INTO " + TableStart() + r_node->Table()->Name() + TableEnd() + "(";
 
 			const tsAttributeMap& map = r_node->Values();
-				map.foreach([&sourceList, &destList, this](const __tsAttributeMapItem& item) {
+				map.foreach([&sourceList, &destList, this](const char* name, const char* value) {
 				if (sourceList.size() > 0)
 				{
 					sourceList += ", ";
 					destList += ", ";
 				}
-				sourceList += FieldStart() + item.m_name + FieldEnd();
-				destList += StringToSQL(item.m_value);
+					sourceList += FieldStart() + name + FieldEnd();
+					destList += StringToSQL(value);
 			});
 
 			sql += sourceList + ") VALUES (" + destList + ");\r\n";

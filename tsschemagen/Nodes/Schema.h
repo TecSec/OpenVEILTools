@@ -48,7 +48,9 @@ public:
 	static std::shared_ptr<Schema> Create(std::shared_ptr<tsXmlNode> doc) { return IObject::Create<Schema>(doc); }
 
 	Schema(std::shared_ptr<tsXmlNode> doc);
-	virtual ~Schema() {}
+	virtual ~Schema() 
+    {
+    }
 
 	int Major() const { return _Major; }
 	int Minor() const { return _Minor; }

@@ -33,12 +33,52 @@
 
 void* cryptoNew(size_t size)
 {
-	return malloc(size);
+    return tsAllocate(size);
 }
 void cryptoDelete(void* ptr)
 {
-	free(ptr);
+    tsFree(ptr);
 }
+//void * operator new(std::size_t n) throw(std::bad_alloc)
+//{
+//    return cryptoNew(n);
+//}
+//void operator delete(void * p) throw()
+//{
+//    cryptoDelete(p);
+//}
+//void* operator new(size_t _Size, int _BlockUse, char const* _FileName, int _LineNumber)
+//{
+//    return _internal_TS_Allocate_dbg(_Size, _BlockUse, _FileName, _LineNumber);
+//}
+//
+//void* operator new[](size_t _Size, int _BlockUse, char const* _FileName, int _LineNumber)
+//{
+//    return _internal_TS_Allocate_dbg(_Size, _BlockUse, _FileName, _LineNumber);
+//}
+//
+//void* operator new(std::size_t count, const std::nothrow_t& tag)
+//{
+//    return _internal_TS_Allocate(count);
+//}
+//void* operator new[](std::size_t count, const std::nothrow_t& tag)
+//{
+//    return _internal_TS_Allocate(count);
+//}
+//
+//void operator delete(void* _Block, int _BlockUse, char const* _FileName, int _LineNumber) throw()
+//{
+//    _internal_TSFree_dbg(_Block, _BlockUse);
+//}
+//void operator delete[](void* _Block, int _BlockUse, char const* _FileName, int _LineNumber) throw()
+//{
+//    _internal_TSFree_dbg(_Block, _BlockUse);
+//}
+//void operator delete(void* ptr, const std::nothrow_t& tag)
+//{
+//    _internal_TSFree(ptr);
+//}
+
 void TSPatchValueForXML(const tsStringBase &value, tsStringBase &out)
 {
 	size_t count;
@@ -64,81 +104,11 @@ void TSPatchValueForXML(const tsStringBase &value, tsStringBase &out)
 			out += val;
 	}
 }
-void TSPatchValueFromXML(const tsStringBase &value, tsStringBase &out)
-{
-	size_t count;
-	size_t i;
-	char val;
-
-	out.resize(0);
-	count = value.size();
-	for (i = 0; i < count; i++)
-	{
-		val = value.c_at(i);
-		if (val == '&')
-		{
-			if (count < i + 4)
-				out += val;
-			else
-			{
-				if (value.c_at(i + 1) == 'l' && value.c_at(i + 2) == 't' &&
-					value.c_at(i + 3) == ';')
-				{
-					out += '<';
-					i += 3;
-				}
-				else if (value.c_at(i + 1) == 'g' && value.c_at(i + 2) == 't' &&
-					value.c_at(i + 3) == ';')
-				{
-					out += '>';
-					i += 3;
-				}
-				else if (count < i + 5)
-					out += val;
-				else {
-					if (value.c_at(i + 1) == 'a' && value.c_at(i + 2) == 'm' &&
-						value.c_at(i + 3) == 'p' && value.c_at(i + 4) == ';')
-					{
-						out += '&';
-						i += 4;
-					}
-					else if (count < i + 6)
-						out += val;
-					else
-					{
-						if (value.c_at(i + 1) == 'q' && value.c_at(i + 2) == 'u' &&
-							value.c_at(i + 3) == 'o' && value.c_at(i + 4) == 't' &&
-							value.c_at(i + 5) == ';')
-						{
-							out += '"';
-							i += 5;
-						}
-						else if (value.c_at(i + 1) == 'a' && value.c_at(i + 2) == 'p' &&
-							value.c_at(i + 3) == 'o' && value.c_at(i + 4) == 's' &&
-							value.c_at(i + 5) == ';')
-						{
-							out += '\'';
-							i += 5;
-						}
-						else
-							out += val;
-					}
-				}
-			}
-		}
-		else
-			out += val;
-	}
-}
 void TSGuidToString(const GUID &id, tsStringBase &out)  // taken from RTE guid_functions.cpp
 {
-	unsigned char * pStr;
-
-	pStr = (unsigned char *)&id;
-	out.Format("{%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
-		pStr[3], pStr[2], pStr[1], pStr[0], pStr[5], pStr[4], pStr[7], pStr[6], pStr[8], pStr[9],
-		pStr[10], pStr[11], pStr[12], pStr[13], pStr[14], pStr[15]);
-	return;
+    out.resize(50);
+    tsGuidToString(&id, out.rawData(), (uint32_t)out.size());
+    out.resize(tsStrLen(out.c_str()));
 }
 
 tsStringBase TSGuidToString(const GUID &id)
@@ -150,154 +120,72 @@ tsStringBase TSGuidToString(const GUID &id)
 }
 void xp_SplitPath(const tsStringBase &inPath, tsStringBase &path, tsStringBase &name, tsStringBase &ext)
 {
-	tsStringBase iPath(inPath);
+    uint32_t dirLen = 0, fileLen = 0, extLen = 0;
+    const char* _dir = nullptr, *_file = nullptr, *_ext = nullptr;
 
-	path.clear();
-	name.clear();
-	ext.clear();
+    tsSplitPath(inPath.c_str(), &_dir, &dirLen, &_file, &fileLen, &_ext, &extLen);
 
-	if (strrchr(iPath.c_str(), XP_PATH_SEP_CHAR) != 0)
-	{
-		name = strrchr(iPath.c_str(), XP_PATH_SEP_CHAR) + 1;
-		iPath.resize(iPath.size() - name.size());
-	}
-	else
-	{
-		name = iPath;
-		iPath.clear();
-	}
-
-	if (strrchr(name.c_str(), '.') != NULL)
-	{
-		ext = strrchr(name.c_str(), '.');
-		name.resize(name.size() - ext.size());
-	}
-
-	// Get the file path
-	path = iPath;
-}
-static int64_t getFileSize(FILE* file)
-{
-#if defined(HAVE_FTELLO64)
-	int64_t posi = ftello64(file);
-	fseeko64(file, 0, SEEK_END);
-	int64_t len = ftello64(file);
-	fseeko64(file, posi, SEEK_SET);
-	return len;
-#elif defined(HAVE__FTELLI64)
-	int64_t posi = _ftelli64(file);
-	_fseeki64(file, 0, SEEK_END);
-	int64_t len = _ftelli64(file);
-	_fseeki64(file, posi, SEEK_SET);
-	return len;
-#else
-	long posi = ftell(file);
-	fseek(file, 0, SEEK_END);
-	long len = ftell(file);
-	fseek(file, posi, SEEK_SET);
-	return len;
-#endif
+    path.assign(_dir, dirLen);
+    name.assign(_file, fileLen);
+    ext.assign(_ext, extLen);
 }
 bool xp_ReadAllText(const tsStringBase& filename, tsStringBase& contents)
 {
-	FILE* file = nullptr;
+    TSFILE file = nullptr;
 	uint32_t count;
 
-	if (fopen_s(&file, filename.c_str(), "rb") != 0)
+    if (tsFOpen(&file, filename.c_str(), "rb", tsShare_DenyWR) != 0)
 		return false;
 
-	int64_t size = getFileSize(file);
+    int64_t size = tsGetFileSize64FromHandle(file);
 	if (size > 0x7fffffff)
 	{
-		fclose(file);
+        tsCloseFile(file);
 		return false;
 	}
 	contents.resize((size_t)size);
-	count = (uint32_t)fread(contents.rawData(), 1, (uint32_t)size, file);
+    count = (uint32_t)tsReadFile(contents.rawData(), 1, (uint32_t)size, file);
 	if (count != size)
 	{
 		contents.clear();
-		fclose(file);
+        tsCloseFile(file);
 		return false;
 	}
 	contents.resize(count);
-	fclose(file);
+    tsCloseFile(file);
 	return true;
 }
 bool xp_ReadAllBytes(const tsStringBase& filename, tsData& contents)
 {
-	FILE* file = nullptr;
+    TSFILE file = nullptr;
 	uint32_t count;
 
-	if (fopen_s(&file, filename.c_str(), "rb") != 0)
+    if (tsFOpen(&file, filename.c_str(), "rb", tsShare_DenyWR) != 0)
 		return false;
 
-	int64_t size = getFileSize(file);
+    int64_t size = tsGetFileSize64FromHandle(file);
 	if (size > 0x7fffffff)
 	{
-		fclose(file);
+        tsCloseFile(file);
 		return false;
 	}
 	contents.resize((uint32_t)size);
-	count = (uint32_t)fread(contents.rawData(), 1, (uint32_t)size, file);
+    count = (uint32_t)tsReadFile(contents.rawData(), 1, (uint32_t)size, file);
 	if (count != size)
 	{
 		contents.clear();
-		fclose(file);
+        tsCloseFile(file);
 		return false;
 	}
 	contents.resize(count);
-	fclose(file);
+    tsCloseFile(file);
 	return true;
 }
 bool xp_WriteText(const tsStringBase& filename, const tsStringBase& contents)
 {
-	FILE* file = nullptr;
-
-	if (fopen_s(&file, filename.c_str(), "wb") != 0)
-		return false;
-
-	if (fwrite(contents.c_str(), 1, (uint32_t)contents.size(), file) != (uint32_t)contents.size())
-	{
-		fclose(file);
-		return false;
-	}
-	fclose(file);
-	return true;
+    return tsWriteByteArray(filename.c_str(), (const uint8_t*)contents.c_str(), (uint32_t)contents.size());
 }
 bool xp_WriteBytes(const tsStringBase& filename, const tsData& contents)
 {
-	FILE* file = nullptr;
-
-	if (fopen_s(&file, filename.c_str(), "wb") != 0)
-		return false;
-
-	if (fwrite(contents.c_str(), 1, (uint32_t)contents.size(), file) != (uint32_t)contents.size())
-	{
-		fclose(file);
-		return false;
-}
-	fclose(file);
-	return true;
-}
-bool xp_FileExists(const tsStringBase &path)
-{
-#ifdef _WIN32
-	return GetFileAttributesA(path.c_str()) != INVALID_FILE_ATTRIBUTES;
-#else
-	struct stat st;
-
-	if (stat(path.c_str(), &st) != 0)
-		return FALSE;
-	return true;
-#endif
-}
-bool xp_CreateDirectory(const tsStringBase &path, bool UserOnly)
-{
-#ifdef _WIN32
-	MY_UNREFERENCED_PARAMETER(UserOnly);
-	return CreateDirectoryA(path.c_str(), NULL) != FALSE;
-#else
-	return (mkdir(path.c_str(), (UserOnly ? 0700 : 0764)) == 0) ? true : false;
-#endif
+    return tsWriteByteArray(filename.c_str(), contents.c_str(), (uint32_t)contents.size());
 }

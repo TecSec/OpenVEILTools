@@ -670,7 +670,7 @@ public:
 	/// <returns>The parser error code for this tag.</returns>
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	virtual tsXmlParserCallback::resultCodes StartNode(const tsStringBase &NodeName,
-		tsAttributeMap &attributes,
+		const tsAttributeMap &attributes,
 		const tsStringBase &InnerXML,
 		bool SingleNode,
 		tsStringBase &Results);

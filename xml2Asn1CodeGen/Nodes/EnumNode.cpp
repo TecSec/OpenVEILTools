@@ -98,7 +98,7 @@ bool EnumNode::WriteStructure(std::shared_ptr<FileNode> files)
 	//files->Header()->WriteLine("template <>");
 	//files->Header()->WriteLine("struct tlvmeta_traits<" + NameSpace()->ToString() + Name() + "> : public tlvmeta_traits<int>");
 	//files->Header()->WriteLine("{");
-	//files->Header()->WriteLine("    static " + NameSpace()->ToString() + Name() + " fromString(const tsCryptoStringBase& obj) { return (" + NameSpace()->ToString() + Name() + ")TsStrToInt(obj); }");
+	//files->Header()->WriteLine("    static " + NameSpace()->ToString() + Name() + " fromString(const tsCryptoStringBase& obj) { return (" + NameSpace()->ToString() + Name() + ")tsStrToInt(obj); }");
 	//files->Header()->WriteLine("    static " + NameSpace()->ToString() + Name() + " initialize() { return (" + NameSpace()->ToString() + Name() + ")0; }");
 	//files->Header()->WriteLine("    static " + NameSpace()->ToString() + Name() + "* convertArrayElementToElementType(Asn1DataBaseClass* object) { return reinterpret_cast<" + NameSpace()->ToString() + Name() + "*>(object); }");
 	//files->Header()->WriteLine("    static " + NameSpace()->ToString() + Name() + " NodeToData(const std::shared_ptr<TlvNode>& node) { return (" + NameSpace()->ToString() + Name() + ")node->InnerDataAsNumber(); }");

@@ -40,56 +40,41 @@
 const tsStringBase::size_type tsStringBase::npos = (size_type)(-1);
 
 tsStringBase::tsStringBase() :
-	m_data(nullptr),
-	m_used(0),
-	m_allocated(-1)
+	_data(tsCreateBuffer())
 {
-	reserve(0);
 };
 tsStringBase::tsStringBase(std::initializer_list<value_type> init) :
-	m_data(nullptr),
-	m_used(0),
-	m_allocated(-1)
+	_data(tsCreateBuffer())
 {
 	tsStringBase::size_type index = 0;
-	reserve(0);
+    char* ptr;
+
 	resize(init.size());
 
+    ptr = rawData();
 	for (auto i = init.begin(); i != init.end(); ++i)
 	{
-		m_data[index++] = *i;
+		ptr[index++] = *i;
 	}
 }
 tsStringBase::tsStringBase(tsStringBase &&obj) :
-	m_data(nullptr),
-	m_used(0),
-	m_allocated(-1)
+	_data(tsCreateBuffer())
 {
-	m_data = obj.m_data;
-	m_used = obj.m_used;
-	m_allocated = obj.m_allocated;
-
-	obj.m_data = nullptr;
-	obj.m_used = 0;
-	obj.m_allocated = -1;
-	obj.reserve(0);
+    tsMoveBuffer(obj._data, _data);
 }
-tsStringBase::tsStringBase(const_pointer data, tsStringBase::size_type Len) :m_data(nullptr), m_used(0), m_allocated(-1)
+tsStringBase::tsStringBase(const_pointer data, tsStringBase::size_type Len) :_data(tsCreateBuffer())
 {
 	if (Len > 0 && data != nullptr)
 	{
 		resize(Len);
-		memcpy(m_data, data, Len * sizeof(data[0]));
+		memcpy(rawData(), data, Len * sizeof(data[0]));
 	}
-	else
-		reserve(0);
 };
-tsStringBase::tsStringBase(const tsStringBase &obj) :m_data(nullptr), m_used(0), m_allocated(-1)
+tsStringBase::tsStringBase(const tsStringBase &obj) :_data(tsCreateBuffer())
 {
-	reserve(0);
 	copyFrom(obj);
 };
-tsStringBase::tsStringBase(const_pointer data) :m_data(nullptr), m_used(0), m_allocated(-1)
+tsStringBase::tsStringBase(const_pointer data) :_data(tsCreateBuffer())
 {
 	tsStringBase::size_type Len = 0;
 	if (data != nullptr)
@@ -99,27 +84,16 @@ tsStringBase::tsStringBase(const_pointer data) :m_data(nullptr), m_used(0), m_al
 	if (Len > 0 && data != nullptr)
 	{
 		resize(Len);
-		memcpy(m_data, data, Len * sizeof(value_type));
+		memcpy(rawData(), data, Len * sizeof(value_type));
 	}
-	else
-		reserve(0);
 }
-tsStringBase::tsStringBase(value_type data, tsStringBase::size_type numChars) :m_data(nullptr), m_used(0), m_allocated(-1)
+tsStringBase::tsStringBase(value_type data, tsStringBase::size_type numChars) :_data(tsCreateBuffer())
 {
-	reserve(0);
 	resize(numChars, data);
 }
 tsStringBase::~tsStringBase()
 {
-	if (m_data != nullptr)
-	{
-		if (m_used > 0)
-			memset(m_data, 0, m_used * sizeof(value_type));
-		delete[] m_data;
-		m_data = nullptr;
-	}
-	m_used = 0;
-	m_allocated = -1;
+    tsFreeBuffer(&_data);
 };
 //tsStringBase::operator LPCTSTR ()
 //{
@@ -129,18 +103,8 @@ tsStringBase &tsStringBase::operator= (tsStringBase &&obj)
 {
 	if (&obj != this)
 	{
-		resize(0);
-		if (m_data != nullptr)
-			delete[] m_data;
-
-		m_data = obj.m_data;
-		m_used = obj.m_used;
-		m_allocated = obj.m_allocated;
-
-		obj.m_data = nullptr;
-		obj.m_used = 0;
-		obj.m_allocated = -1;
-		obj.reserve(0);
+        tsEmptyBuffer(_data);
+        tsMoveBuffer(obj._data, _data);
 	}
 	return *this;
 }
@@ -157,7 +121,7 @@ tsStringBase &tsStringBase::operator= (const_pointer data) /* zero terminated */
 tsStringBase &tsStringBase::operator= (value_type data)
 {
 	resize(1);
-	m_data[0] = data;
+	rawData()[0] = data;
 	return *this;
 }
 tsStringBase &tsStringBase::operator=(std::initializer_list<value_type> iList)
@@ -167,14 +131,7 @@ tsStringBase &tsStringBase::operator=(std::initializer_list<value_type> iList)
 }
 tsStringBase &tsStringBase::operator+= (const tsStringBase &obj)
 {
-	tsStringBase::size_type len = 0;
-	tsStringBase::size_type oldUsed = m_used;
-	if (obj.size() > 0)
-	{
-		len = obj.size();
-		resize(m_used + len);
-		memcpy(&m_data[oldUsed], obj.m_data, len * sizeof(value_type));
-	}
+    tsAppendStringLenToBuffer(_data, obj.c_str(), (uint32_t)obj.size());
 	return *this;
 }
 tsStringBase &tsStringBase::operator+= (const_pointer data) /* zero terminated */
@@ -183,15 +140,7 @@ tsStringBase &tsStringBase::operator+= (const_pointer data) /* zero terminated *
 }
 tsStringBase &tsStringBase::operator+= (value_type data)
 {
-	tsStringBase::size_type len = 0;
-	tsStringBase::size_type oldUsed = m_used;
-	//	if ( data != nullptr )
-	{
-		len = 1;
-
-		resize(m_used + len);
-		m_data[oldUsed] = data;
-	}
+    tsAppendStringLenToBuffer(_data, &data, 1);
 	return *this;
 }
 tsStringBase &tsStringBase::operator += (std::initializer_list<value_type> init)
@@ -203,7 +152,7 @@ int tsStringBase::compare(const tsStringBase& str) const
 	size_type count = MIN(size(), str.size());
 	int diff = 0;
 
-	diff = memcmp(m_data, str.m_data, count);
+	diff = memcmp(c_str(), str.c_str(), count);
 	if (diff != 0)
 		return diff;
 	if (size() > str.size())
@@ -226,7 +175,7 @@ int tsStringBase::compare(const_pointer s) const
 	size_type count = MIN(size(), len);
 	int diff = 0;
 
-	diff = memcmp(m_data, s, count);
+	diff = memcmp(c_str(), s, count);
 	if (diff != 0)
 		return diff;
 
@@ -246,11 +195,11 @@ int tsStringBase::compare(size_type pos1, size_type count1, const_pointer s, siz
 }
 tsStringBase::size_type tsStringBase::size() const
 {
-	return m_used;
+	return tsBufferUsed(_data);
 }
 tsStringBase::size_type tsStringBase::length() const
 {
-	return m_used;
+	return size();
 }
 void tsStringBase::clear()
 {
@@ -258,40 +207,11 @@ void tsStringBase::clear()
 }
 _Post_satisfies_(this->m_data != nullptr) void tsStringBase::reserve(tsStringBase::size_type newSize)
 {
-	if (newSize > max_size())
-		throw std::length_error("String too long");
-	if ((ptrdiff_t)newSize > m_allocated)
-	{
-		pointer tmp;
-		size_type origNewSize = newSize;
-
-		{
-			if (newSize > 20000)
-				newSize += 1024;
-			else
-				newSize += MemAllocSize;
-			tmp = new value_type[newSize + 1];
-			if (tmp == nullptr)
-			{
-				throw std::bad_alloc();
-			}
-			memset(&tmp[m_used], 0, (origNewSize - m_used) * sizeof(value_type));
-			memset(&tmp[origNewSize], 0, (newSize + 1 - origNewSize) * sizeof(value_type));
-			if (m_data != nullptr)
-			{
-				memcpy(tmp, m_data, m_used * sizeof(value_type));
-				memset(m_data, 0, m_used * sizeof(value_type));
-				delete[] m_data;
-			}
-
-			m_data = tmp;
-			m_allocated = newSize;
-		}
-	}
+    tsReserveBuffer(_data, (uint32_t)newSize);
 }
 tsStringBase::size_type tsStringBase::capacity() const
 {
-	return m_allocated;
+	return tsBufferReserved(_data);
 }
 tsStringBase::size_type tsStringBase::max_size() const
 {
@@ -303,44 +223,39 @@ _Post_satisfies_(this->m_data != nullptr) void tsStringBase::resize(tsStringBase
 }
 _Post_satisfies_(this->m_data != nullptr) void tsStringBase::resize(tsStringBase::size_type newSize, value_type value)
 {
-	reserve(newSize);
-	if (capacity() < newSize)
+    uint32_t oldSize = (uint32_t)size();
+
+	if (!tsResizeBuffer(_data, (uint32_t)newSize))
 		throw std::bad_alloc();
 
-	if (newSize > m_used)
+	if (newSize > oldSize)
 	{
-		memset(&m_data[m_used], value, newSize - m_used);
-		m_used = newSize;
-	}
-	else if (newSize < m_used)
-	{
-		memset(&m_data[newSize], 0, m_used - newSize);
-		m_used = newSize;
+		memset(&rawData()[oldSize], value, newSize - oldSize);
 	}
 }
 tsStringBase::reference tsStringBase::at(tsStringBase::size_type index)
 {
-	if (index >= m_used)
+	if (index >= size())
 	{
 		throw std::out_of_range("index");
 	}
-	return m_data[index];
+	return rawData()[index];
 }
 tsStringBase::const_reference tsStringBase::at(tsStringBase::size_type index) const
 {
-	if (index >= m_used)
+	if (index >= size())
 	{
 		throw std::out_of_range("index");
 	}
-	return m_data[index];
+	return c_str()[index];
 }
 tsStringBase::value_type tsStringBase::c_at(tsStringBase::size_type index) const
 {
-	if (index >= m_used)
+	if (index >= size())
 	{
 		throw std::out_of_range("index");
 	}
-	return m_data[index];
+	return c_str()[index];
 }
 //
 // used to access the buffer directly.
@@ -350,39 +265,39 @@ tsStringBase::value_type tsStringBase::c_at(tsStringBase::size_type index) const
 //
 tsStringBase::pointer tsStringBase::data()
 {
-	return m_data;
+	return rawData();
 }
 tsStringBase::const_pointer tsStringBase::data() const
 {
-	return m_data;
+	return c_str();
 }
 tsStringBase::reference tsStringBase::front()
 {
-	return m_data[0];
+	return rawData()[0];
 }
 tsStringBase::const_reference tsStringBase::front() const
 {
-	return m_data[0];
+	return c_str()[0];
 }
 tsStringBase::reference tsStringBase::back()
 {
 	if (empty())
 		throw std::out_of_range("index");
-	return m_data[m_used - 1];
+	return rawData()[size() - 1];
 }
 tsStringBase::const_reference tsStringBase::back() const
 {
 	if (empty())
 		throw std::out_of_range("index");
-	return m_data[m_used - 1];
+	return c_str()[size() - 1];
 }
 bool tsStringBase::empty() const
 {
-	return m_used == 0;
+	return size() == 0;
 }
 tsStringBase::const_pointer tsStringBase::c_str() const
 {
-	return m_data;
+	return (tsStringBase::const_pointer)tsGetBufferDataPtr(_data);
 }
 void tsStringBase::push_back(value_type ch)
 {
@@ -427,18 +342,20 @@ tsStringBase &tsStringBase::assign(const_pointer newData, tsStringBase::size_typ
 	resize(size);
 	if (size > 0 && newData != nullptr)
 	{
-		memcpy(m_data, newData, size * sizeof(value_type));
+		memcpy(rawData(), newData, size * sizeof(value_type));
 	}
 	return *this;
 }
 tsStringBase &tsStringBase::assign(std::initializer_list<value_type> iList)
 {
 	size_type pos = size();
+    pointer ptr;
 
 	resize(iList.size());
+    ptr = rawData();
 	for (auto it = iList.begin(); it != iList.end(); ++it)
 	{
-		m_data[pos++] = *it;
+		ptr[pos++] = *it;
 	}
 	return *this;
 }
@@ -448,7 +365,7 @@ tsStringBase::size_type tsStringBase::copy(pointer dest, size_type count, size_t
 		throw std::out_of_range("index");
 	if (count + pos > size())
 		count = size() - pos;
-	memcpy(dest, &m_data[pos], sizeof(value_type) * count);
+	memcpy(dest, &c_str()[pos], sizeof(value_type) * count);
 	return count;
 }
 void tsStringBase::copyFrom(const tsStringBase &obj)
@@ -456,13 +373,11 @@ void tsStringBase::copyFrom(const tsStringBase &obj)
 	if (&obj == this)
 		return;
 	resize(obj.size());
-	memcpy(m_data, obj.m_data, m_used * sizeof(value_type));
+	memcpy(rawData(), obj.c_str(), size() * sizeof(value_type));
 }
 void tsStringBase::swap(tsStringBase &obj)
 {
-	std::swap(m_data, obj.m_data);
-	std::swap(m_used, obj.m_used);
-	std::swap(m_allocated, obj.m_allocated);
+	std::swap(_data, obj._data);
 }
 tsStringBase &tsStringBase::prepend(const_pointer data)
 {
@@ -482,33 +397,17 @@ tsStringBase &tsStringBase::prepend(const_pointer data, tsStringBase::size_type 
 }
 tsStringBase &tsStringBase::prepend(value_type data)
 {
-	if (data == 0)
-	{
-		return *this;
-	}
-	tsStringBase::size_type oldUsed = m_used;
-	resize(oldUsed + 1);
-	memmove(&m_data[1], m_data, oldUsed * sizeof(value_type));
-	m_data[0] = data;
+    tsPrependStringLenToBuffer(_data, &data, 1);
 	return *this;
 }
 tsStringBase &tsStringBase::prepend(uint8_t data)
 {
-	tsStringBase::size_type oldUsed = m_used;
-	resize(oldUsed + 1);
-	memmove(&m_data[1], m_data, oldUsed * sizeof(value_type));
-	m_data[0] = data;
+    tsPrependBuffer(_data, &data, 1);
 	return *this;
 }
 tsStringBase &tsStringBase::prepend(const tsStringBase &obj)
 {
-	if (obj.size() > 0)
-	{
-		tsStringBase::size_type oldUsed = m_used;
-		resize(oldUsed + obj.size());
-		memmove(&m_data[obj.size()], m_data, oldUsed * sizeof(value_type));
-		memcpy(m_data, obj.c_str(), obj.size() * sizeof(value_type));
-	}
+    tsPrependStringLenToBuffer(_data, obj.c_str(), (uint32_t)obj.size());
 	return *this;
 }
 tsStringBase &tsStringBase::append(size_type len, value_type ch)
@@ -518,14 +417,7 @@ tsStringBase &tsStringBase::append(size_type len, value_type ch)
 }
 tsStringBase &tsStringBase::append(const tsStringBase &obj)
 {
-	size_type objSize = obj.size();
-
-	if (objSize > 0)
-	{
-		tsStringBase::size_type oldUsed = m_used;
-		resize(oldUsed + objSize);
-		memcpy(&m_data[oldUsed], obj.c_str(), objSize * sizeof(value_type));
-	}
+    tsAppendStringLenToBuffer(_data, obj.c_str(), (uint32_t)obj.size());
 	return *this;
 }
 tsStringBase &tsStringBase::append(const tsStringBase &obj, size_type pos, size_type count)
@@ -551,19 +443,19 @@ tsStringBase &tsStringBase::append(const_pointer data)
 tsStringBase &tsStringBase::append(std::initializer_list<value_type> list)
 {
 	size_type pos = size();
+    pointer ptr;
 
 	resize(size() + list.size());
+    ptr = rawData();
 	for (auto it = list.begin(); it != list.end(); ++it)
 	{
-		m_data[pos++] = *it;
+		ptr[pos++] = *it;
 	}
 	return *this;
 }
 tsStringBase &tsStringBase::append(value_type data)
 {
-	tsStringBase::size_type oldUsed = m_used;
-	resize(oldUsed + 1);
-	m_data[oldUsed] = data;
+    tsAppendStringLenToBuffer(_data, &data, 1);
 	return *this;
 }
 tsStringBase &tsStringBase::append(uint8_t data)
@@ -661,70 +553,42 @@ tsStringBase& tsStringBase::erase(tsStringBase::size_type pos, tsStringBase::siz
 {
 	if (pos > size())
 		throw std::out_of_range("index");
-	if (pos + count >= size())
-	{
-		resize(pos);
-	}
-	else
-	{
-		memmove(&m_data[pos], &m_data[pos + count], sizeof(value_type) * (size() - pos - count));
-		resize(size() - count);
-	}
+    if (!tsEraseFromBuffer(_data, (uint32_t)pos, (uint32_t)count))
+        throw std::out_of_range("index");
 	return *this;
 }
 tsStringBase& tsStringBase::insert(tsStringBase::size_type index, tsStringBase::size_type count, tsStringBase::value_type ch)
 {
 	size_type oldsize = size();
+    pointer ptr;
 
 	resize(size() + count);
-	memmove(&m_data[index + count], &m_data[index], sizeof(value_type) * (oldsize - index));
-	memset(&m_data[index], ch, count);
+    ptr = rawData();
+	memmove(&ptr[index + count], &ptr[index], sizeof(value_type) * (oldsize - index));
+	memset(&ptr[index], ch, count);
 	return *this;
 }
 tsStringBase& tsStringBase::insert(tsStringBase::size_type index, tsStringBase::value_type ch)
 {
-	size_type oldsize = size();
-
-	resize(size() + 1);
-	memmove(&m_data[index + 1], &m_data[index], sizeof(value_type) * (oldsize - index));
-	m_data[index] = ch;
+    tsInsertIntoBuffer(_data, (uint32_t)index, (const uint8_t*)&ch, 1);
 	return *this;
 }
 tsStringBase& tsStringBase::insert(tsStringBase::size_type index, tsStringBase::const_pointer s)
 {
-	if (s == nullptr)
+	if (s == nullptr || !tsInsertIntoBuffer(_data, (uint32_t)index, (const uint8_t*)s, tsStrLen(s)))
 		throw std::invalid_argument("s is NULL");
-
-	size_type oldsize = size();
-	size_type count = strlen(s);
-
-	resize(size() + count);
-	memmove(&m_data[index + count], &m_data[index], sizeof(value_type) * (oldsize - index));
-	memcpy(&m_data[index], s, count);
 	return *this;
 }
 tsStringBase& tsStringBase::insert(tsStringBase::size_type index, tsStringBase::const_pointer s, tsStringBase::size_type count)
 {
-	if (s == nullptr)
+	if (s == nullptr || !tsInsertIntoBuffer(_data, (uint32_t)index, (const uint8_t*)s, (uint32_t)count))
 		throw std::invalid_argument("s is NULL");
-
-	size_type oldsize = size();
-
-	resize(size() + count);
-	memmove(&m_data[index + count], &m_data[index], sizeof(value_type) * (oldsize - index));
-	memcpy(&m_data[index], s, count);
 	return *this;
 }
 tsStringBase& tsStringBase::insert(tsStringBase::size_type index, const tsStringBase& str)
 {
-	size_type oldsize = size();
-	size_type count = str.size();
-
-	if (count == 0)
+	if (!tsInsertIntoBuffer(_data, (uint32_t)index, (const uint8_t*)str.c_str(), (uint32_t)str.size()))
 		return *this;
-	resize(size() + count);
-	memmove(&m_data[index + count], &m_data[index], sizeof(value_type) * (oldsize - index));
-	memcpy(&m_data[index], str.data(), count);
 	return *this;
 }
 tsStringBase& tsStringBase::insert(tsStringBase::size_type index, const tsStringBase& str, size_type index_str, size_type count)
@@ -734,6 +598,7 @@ tsStringBase& tsStringBase::insert(tsStringBase::size_type index, const tsString
 tsStringBase& tsStringBase::insert(size_type pos, std::initializer_list<value_type> iList)
 {
 	size_type oldsize = size();
+    pointer ptr;
 
 	if (pos >= size())
 	{
@@ -741,10 +606,11 @@ tsStringBase& tsStringBase::insert(size_type pos, std::initializer_list<value_ty
 		return *this;
 	}
 	resize(size() + iList.size());
-	memmove(&m_data[pos + iList.size()], &m_data[pos], sizeof(value_type) * (oldsize - pos));
+    ptr = rawData();
+	memmove(&ptr[pos + iList.size()], &ptr[pos], sizeof(value_type) * (oldsize - pos));
 	for (auto it = iList.begin(); it != iList.end(); ++it)
 	{
-		m_data[pos++] = *it;
+		ptr[pos++] = *it;
 	}
 	return *this;
 
@@ -793,36 +659,13 @@ tsStringBase &tsStringBase::InsertAt(tsStringBase::size_type offset, const_point
 
 tsStringBase &tsStringBase::InsertAt(tsStringBase::size_type offset, const tsStringBase &value)
 {
-	tsStringBase::size_type oldLen = m_used;
-
-	if (value.size() == 0)
-		return *this;
-	if (offset > m_used)
-	{
-		offset = m_used;
-	}
-	resize(oldLen + value.size());
-	memmove(&m_data[offset + value.size()], &m_data[offset], (oldLen - offset) * sizeof(value_type));
-	memcpy(&m_data[offset], value.c_str(), value.size() * sizeof(value_type));
+    tsInsertIntoBuffer(_data, (uint32_t)offset, (const uint8_t*)value.c_str(), (uint32_t)value.size());
 	return *this;
 }
 
 tsStringBase &tsStringBase::DeleteAt(tsStringBase::size_type offset, tsStringBase::size_type count)
 {
-	if (count == 0)
-		return *this;
-
-	if (offset >= m_used)
-		return *this;
-
-	if (count + offset > m_used)
-		count = m_used - offset;
-
-	if (count + offset < m_used)
-	{
-		memmove(&m_data[offset], &m_data[offset + count], (m_used - offset - count) * sizeof(value_type));
-	}
-	resize(size() - count);
+    tsEraseFromBuffer(_data, (uint32_t)offset, (uint32_t)count);
 	return *this;
 }
 tsStringBase& tsStringBase::replace(size_type pos, size_type count, const tsStringBase& str)
@@ -870,14 +713,10 @@ tsStringBase &tsStringBase::Replace(tsStringBase::size_type i_Begin, tsStringBas
 	{
 		repLen = i_newDataLength;
 	}
-#ifdef HAVE_ISBADREADPTR
-	if (IsBadReadPtr(i_newData, repLen))
+	if (i_Begin >= size())
 		return *this;
-#endif
-	if (i_Begin >= m_used)
-		return *this;
-	if (i_End >= m_used)
-		i_End = m_used - 1;
+	if (i_End >= size())
+		i_End = size() - 1;
 
 	if (!(DeleteAt(i_Begin, i_End - i_Begin + 1).c_str()))
 		return *this;
@@ -897,19 +736,20 @@ tsStringBase &tsStringBase::Replace(const tsStringBase &find, const tsStringBase
 
 	findLen = find.size();
 	repLen = replacement.size();
-	if (findLen < 1 || findLen > m_used)
+	if (findLen < 1 || findLen > size())
 		return *this;
 	if (count == -1)
 		count = (int32_t)max_size();
 	posi = 0;
-	while (posi + findLen <= m_used && count > 0)
+	while (posi + findLen <= size() && count > 0)
 	{
-		if (strncmp(&m_data[posi], find.c_str(), findLen) == 0)
+        pointer ptr = rawData();
+		if (strncmp(&ptr[posi], find.c_str(), findLen) == 0)
 		{
 			count--;
 			if (findLen == repLen)
 			{
-				memcpy(&m_data[posi], replacement.c_str(), repLen * sizeof(value_type));
+				memcpy(&ptr[posi], replacement.c_str(), repLen * sizeof(value_type));
 				posi += repLen - 1;
 			}
 			else if (findLen < repLen)
@@ -917,9 +757,10 @@ tsStringBase &tsStringBase::Replace(const tsStringBase &find, const tsStringBase
 				tsStringBase::size_type oldLen = size();
 
 				resize(oldLen + repLen - findLen);
+                ptr = rawData();
 				if (oldLen - findLen > posi)
-					memmove(&m_data[posi + repLen], &m_data[posi + findLen], (oldLen - posi - findLen) * sizeof(value_type));
-				memcpy(&m_data[posi], replacement.c_str(), repLen * sizeof(value_type));
+					memmove(&ptr[posi + repLen], &ptr[posi + findLen], (oldLen - posi - findLen) * sizeof(value_type));
+				memcpy(&ptr[posi], replacement.c_str(), repLen * sizeof(value_type));
 				posi += repLen - 1;
 			}
 			else
@@ -928,10 +769,10 @@ tsStringBase &tsStringBase::Replace(const tsStringBase &find, const tsStringBase
 
 				if (oldLen - findLen > posi)
 				{
-					memmove(&m_data[posi + repLen], &m_data[posi + findLen], (oldLen - posi - findLen) * sizeof(value_type));
+					memmove(&ptr[posi + repLen], &ptr[posi + findLen], (oldLen - posi - findLen) * sizeof(value_type));
 				}
 				if (repLen > 0)
-					memcpy(&m_data[posi], replacement.c_str(), repLen * sizeof(value_type));
+					memcpy(&ptr[posi], replacement.c_str(), repLen * sizeof(value_type));
 				resize(oldLen + repLen - findLen);
 				posi += repLen - 1;
 			}
@@ -944,17 +785,19 @@ tsStringBase::size_type tsStringBase::find(const tsStringBase& str, size_type po
 {
 	tsStringBase::size_type i;
 	tsStringBase::size_type len = 0;
+    const_pointer ptr;
 
 	len = str.size();
 	if (len == 0)
 		return npos;
 
-	if (pos + len > m_used)
+	if (pos + len > size())
 		return npos;
-	for (i = pos; i < m_used - len + 1; i++)
+    ptr = c_str();
+	for (i = pos; i < size() - len + 1; i++)
 	{
 		const_pointer in_data_c_str = str.c_str();
-		if (memcmp(in_data_c_str, &m_data[i], len) == 0)
+		if (memcmp(in_data_c_str, &ptr[i], len) == 0)
 		{
 			return i;
 		}
@@ -967,15 +810,17 @@ tsStringBase::size_type tsStringBase::find(const_pointer s, size_type pos, size_
 		throw std::invalid_argument("s is NULL");
 
 	tsStringBase::size_type i;
+    const_pointer ptr;
 
 	if (count == 0)
 		return npos;
 
-	if (pos + count > m_used)
+	if (pos + count > size())
 		return npos;
-	for (i = pos; i < m_used - count + 1; i++)
+    ptr = c_str();
+    for (i = pos; i < size() - count + 1; i++)
 	{
-		if (memcmp(s, &m_data[i], count) == 0)
+		if (memcmp(s, &ptr[i], count) == 0)
 		{
 			return i;
 		}
@@ -989,15 +834,16 @@ tsStringBase::size_type tsStringBase::find(const_pointer s, size_type pos) const
 
 	tsStringBase::size_type i;
 	tsStringBase::size_type len;
+    const_pointer ptr = c_str();
 
 	len = strlen(s);
 	if (len == 0)
 		return npos;
-	if (pos + len > m_used)
+	if (pos + len > size())
 		return npos;
-	for (i = pos; i < m_used - len + 1; i++)
+	for (i = pos; i < size() - len + 1; i++)
 	{
-		if (memcmp(s, &m_data[i], len) == 0)
+		if (memcmp(s, &ptr[i], len) == 0)
 		{
 			return i;
 		}
@@ -1007,12 +853,13 @@ tsStringBase::size_type tsStringBase::find(const_pointer s, size_type pos) const
 tsStringBase::size_type tsStringBase::find(value_type ch, size_type pos) const
 {
 	tsStringBase::size_type i;
+    const_pointer ptr = c_str();
 
-	if (pos >= m_used)
+	if (pos >= size())
 		return npos;
-	for (i = pos; i < m_used; i++)
+	for (i = pos; i < size(); i++)
 	{
-		if (m_data[i] == ch)
+		if (ptr[i] == ch)
 		{
 			return i;
 		}
@@ -1023,6 +870,7 @@ tsStringBase::size_type tsStringBase::find(value_type ch, size_type pos) const
 tsStringBase::size_type tsStringBase::rfind(const tsStringBase& str, size_type pos) const
 {
 	size_type count = str.size();
+    const_pointer ptr = c_str();
 
 	if (count == 0)
 		return npos;
@@ -1034,7 +882,7 @@ tsStringBase::size_type tsStringBase::rfind(const tsStringBase& str, size_type p
 
 	for (i = pos; i >= 0; i--)
 	{
-		if (memcmp(str.c_str(), &m_data[i], count) == 0)
+		if (memcmp(str.c_str(), &ptr[i], count) == 0)
 		{
 			return i;
 		}
@@ -1053,10 +901,11 @@ tsStringBase::size_type tsStringBase::rfind(const_pointer s, size_type pos, size
 		pos = size() - count;
 
 	difference_type i;
+    const_pointer ptr = c_str();
 
 	for (i = pos; i >= 0; i--)
 	{
-		if (memcmp(s, &m_data[i], count) == 0)
+		if (memcmp(s, &ptr[i], count) == 0)
 		{
 			return i;
 		}
@@ -1080,10 +929,11 @@ tsStringBase::size_type tsStringBase::rfind(value_type ch, size_type pos) const
 		pos = size() - 1;
 
 	difference_type i;
+    const_pointer ptr = c_str();
 
 	for (i = pos; i >= 0; i--)
 	{
-		if (m_data[i] == ch)
+		if (ptr[i] == ch)
 		{
 			return i;
 		}
@@ -1100,13 +950,14 @@ tsStringBase::size_type tsStringBase::find_first_of(const_pointer s, size_type p
 	if (s == nullptr || count == 0)
 		return npos;
 	tsStringBase::size_type i;
+    const_pointer ptr = c_str();
 
 	if (pos >= size())
 		return npos;
 
-	for (i = pos; i < m_used; i++)
+	for (i = pos; i < size(); i++)
 	{
-		if (memchr(s, m_data[i], count) != nullptr)
+		if (memchr(s, ptr[i], count) != nullptr)
 		{
 			return i;
 		}
@@ -1133,13 +984,14 @@ tsStringBase::size_type tsStringBase::find_first_not_of(const_pointer s, size_ty
 	if (s == nullptr || count == 0)
 		return npos;
 	tsStringBase::size_type i;
+    const_pointer ptr = c_str();
 
 	if (pos >= size())
 		return npos;
 
-	for (i = pos; i < m_used; i++)
+	for (i = pos; i < size(); i++)
 	{
-		if (memchr(s, m_data[i], count) == nullptr)
+		if (memchr(s, ptr[i], count) == nullptr)
 		{
 			return i;
 		}
@@ -1155,13 +1007,14 @@ tsStringBase::size_type tsStringBase::find_first_not_of(const_pointer s, size_ty
 tsStringBase::size_type tsStringBase::find_first_not_of(value_type ch, size_type pos) const
 {
 	tsStringBase::size_type i;
+    const_pointer ptr = c_str();
 
 	if (pos >= size())
 		return npos;
 
-	for (i = pos; i < m_used; i++)
+	for (i = pos; i < size(); i++)
 	{
-		if (m_data[i] != ch)
+		if (ptr[i] != ch)
 		{
 			return i;
 		}
@@ -1178,13 +1031,14 @@ tsStringBase::size_type tsStringBase::find_last_of(const_pointer s, size_type po
 	if (s == nullptr || count == 0)
 		return npos;
 	tsStringBase::difference_type i;
+    const_pointer ptr = c_str();
 
 	if (pos >= size())
 		pos = size() - 1;
 
 	for (i = pos; i >= 0; --i)
 	{
-		if (memchr(s, m_data[i], count) != nullptr)
+		if (memchr(s, ptr[i], count) != nullptr)
 		{
 			return i;
 		}
@@ -1211,13 +1065,14 @@ tsStringBase::size_type tsStringBase::find_last_not_of(const_pointer s, size_typ
 	if (s == nullptr || count == 0)
 		return npos;
 	tsStringBase::difference_type i;
+    const_pointer ptr = c_str();
 
 	if (pos >= size())
 		pos = size() - 1;
 
 	for (i = pos; i >= 0; --i)
 	{
-		if (memchr(s, m_data[i], count) == nullptr)
+		if (memchr(s, ptr[i], count) == nullptr)
 		{
 			return i;
 		}
@@ -1233,13 +1088,14 @@ tsStringBase::size_type tsStringBase::find_last_not_of(const_pointer s, size_typ
 tsStringBase::size_type tsStringBase::find_last_not_of(value_type ch, size_type pos) const
 {
 	tsStringBase::difference_type i;
+    const_pointer ptr = c_str();
 
 	if (pos >= size())
 		pos = size() - 1;
 
 	for (i = pos; i >= 0; --i)
 	{
-		if (m_data[i] != ch)
+		if (ptr[i] != ch)
 		{
 			return i;
 		}
@@ -1313,11 +1169,12 @@ tsStringBase &tsStringBase::ToUpper()
 {
 	tsStringBase::size_type count = size();
 	tsStringBase::size_type i;
+    pointer ptr = rawData();
 
 	for (i = 0; i < count; i++)
 	{
-		if (m_data[i] >= 'a' && m_data[i] <= 'z')
-			m_data[i] -= 0x20;
+		if (ptr[i] >= 'a' && ptr[i] <= 'z')
+			ptr[i] -= 0x20;
 	}
 	return *this;
 }
@@ -1326,11 +1183,12 @@ tsStringBase &tsStringBase::ToLower()
 {
 	tsStringBase::size_type count = size();
 	tsStringBase::size_type i;
+    pointer ptr = rawData();
 
 	for (i = 0; i < count; i++)
 	{
-		if (m_data[i] >= 'A' && m_data[i] <= 'Z')
-			m_data[i] += 0x20;
+		if (ptr[i] >= 'A' && ptr[i] <= 'Z')
+			ptr[i] += 0x20;
 	}
 	return *this;
 }

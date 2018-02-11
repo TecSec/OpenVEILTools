@@ -36,10 +36,19 @@
 /// <summary>
 /// 	<para>Initializes an instance of the <see cref="tsAttributeMap" /> class.</para>
 /// </summary>
-tsAttributeMap::tsAttributeMap()
+tsAttributeMap::tsAttributeMap() : _list(tsCreateNameValueList())
 {
+    
 }
 
+tsAttributeMap::tsAttributeMap(TSNAME_VALUE_LIST list) : _list(tsCreateNameValueList())
+{
+    tsCopyNameValueListData(list, _list);
+}
+tsAttributeMap::tsAttributeMap(TSNAME_VALUE_LIST&& list)
+{
+    _list = list;
+}
 /// <returns>
 /// </returns>
 /// <summary>
@@ -47,13 +56,13 @@ tsAttributeMap::tsAttributeMap()
 /// </summary>
 /// <param name="obj">
 /// </param>
-tsAttributeMap::tsAttributeMap(const tsAttributeMap &obj)
+tsAttributeMap::tsAttributeMap(const tsAttributeMap &obj) : _list(nullptr)
 {
 	copyFrom (obj);
 }
-tsAttributeMap::tsAttributeMap(tsAttributeMap &&obj)
+tsAttributeMap::tsAttributeMap(tsAttributeMap &&obj) : _list(obj._list)
 {
-	moveFrom(std::move(obj));
+    obj._list = tsCreateNameValueList();
 }
 
 /// <summary>
@@ -62,6 +71,7 @@ tsAttributeMap::tsAttributeMap(tsAttributeMap &&obj)
 /// </returns>
 tsAttributeMap::~tsAttributeMap()
 {
+    tsFreeNameValueList(&_list);
 }
 
 //void *tsAttributeMap::operator new(size_t bytes) 
@@ -99,7 +109,7 @@ tsAttributeMap &tsAttributeMap::operator = (tsAttributeMap &&obj)
 /// </returns>
 size_t tsAttributeMap::count() const
 {
-	return m_list.size();
+    return tsNameValueUsed(_list);
 }
 
 /// <summary>
@@ -112,7 +122,7 @@ tsStringBase tsAttributeMap::item(size_t index) const
 {
 	if ( index >= count() )
 		return "";
-	return m_list.at(index).m_value;
+    return tsGetNameValueValueByIndex(_list, (uint32_t)index);
 }
 
 /// <summary>
@@ -123,47 +133,36 @@ tsStringBase tsAttributeMap::item(size_t index) const
 /// </param>
 tsStringBase tsAttributeMap::item(const tsStringBase &name) const
 {
-	auto item = std::find_if(m_list.begin(), m_list.end(), [&name](const __tsAttributeMapItem& item)->bool{ return item.m_name == name.c_str(); });
-	
-	if (item == m_list.end())
-		return "";
-	return item->m_value;
+    return tsGetNameValueValueByName(_list, name.c_str());
 }
 
 int tsAttributeMap::itemAsNumber(const tsStringBase &name, int defaultValue) const
 {
-	auto item = std::find_if(m_list.begin(), m_list.end(), [&name](const __tsAttributeMapItem& item)->bool{ return item.m_name == name.c_str(); });
+    const char* c = tsGetNameValueValueByName(_list, name.c_str());
 
-	if (item == m_list.end())
+    if (c == nullptr)
         return defaultValue;
-    return atoi(item->m_value.c_str());
+    return tsStrToInt(c);
 }
 
 bool tsAttributeMap::itemAsBoolean(const tsStringBase &name, bool defaultValue) const
 {
-	auto item = std::find_if(m_list.begin(), m_list.end(), [&name](const __tsAttributeMapItem& item)->bool{ return item.m_name == name.c_str(); });
+    const char* c = tsGetNameValueValueByName(_list, name.c_str());
 
-	if (item == m_list.end())
+    if (c == nullptr)
         return defaultValue;
-	tsStringBase tmp = item->m_value;
+    tsStringBase tmp = c;
 	tmp.Trim();
 	if (tmp.size() == 0)
 		return defaultValue;
-	if (_stricmp(tmp.c_str(), "T") == 0 ||
-		_stricmp(tmp.c_str(), "TRUE") == 0 ||
-		_stricmp(tmp.c_str(), "Y") == 0 ||
-		_stricmp(tmp.c_str(), "YES") == 0 ||
-		atoi(tmp.c_str()) != 0)
-	{
-		return true;
-	}
-    return false;
+    return tsStrToBool(tmp.c_str());
 }
 
 bool tsAttributeMap::hasItem(const tsStringBase &name) const
 {
-	auto item = std::find_if(m_list.begin(), m_list.end(), [&name](const __tsAttributeMapItem& item)->bool{ return item.m_name == name.c_str(); });
-	return item != m_list.end();
+    const char* c = tsGetNameValueValueByName(_list, name.c_str());
+
+    return (c != nullptr);
 }
 
 /// <summary>
@@ -176,7 +175,7 @@ tsStringBase tsAttributeMap::name(size_t index) const
 {
 	if ( index >= count() )
 		return "";
-	return m_list.at(index).m_name;
+    return tsGetNameValueName(_list, (uint32_t)index);
 }
 
 /// <summary>
@@ -189,37 +188,15 @@ tsStringBase tsAttributeMap::name(size_t index) const
 /// </param>
 bool tsAttributeMap::AddItem(const tsStringBase &name, const tsStringBase &value)
 {
-	auto it = std::find_if(m_list.begin(), m_list.end(), [&name](const __tsAttributeMapItem& item)->bool{ return item.m_name == name.c_str(); });
-	if (it == m_list.end())
-	{
-		__tsAttributeMapItem item;
-		item.m_value = value;
-		item.m_name = name;
-		m_list.push_back(item);
-	}
-	else
-		it->m_value = value;
-	return true;
+    return tsAddNameValue(_list, name.c_str(), -1, value.c_str(), -1);
 }
 
 bool tsAttributeMap::AddItem(const tsStringBase &name, int value)
 {
-	auto it = std::find_if(m_list.begin(), m_list.end(), [&name](const __tsAttributeMapItem& item)->bool{ return item.m_name == name.c_str(); });
 	char buff[20];
 
-	_snprintf_s(buff, sizeof(buff) / sizeof(char), sizeof(buff) / sizeof(char), ("%d"), value);
-	if (it == m_list.end())
-	{
-		__tsAttributeMapItem item;
-
-		RemoveItem(name);
-		item.m_value = buff;
-		item.m_name = name;
-		m_list.push_back(item);
-	}
-	else
-		it->m_value = buff;
-	return true;
+    tsSnPrintf(buff, sizeof(buff) / sizeof(char), "%d", value);
+    return tsAddNameValue(_list, name.c_str(), -1, buff, -1);
 }
 
 /// <summary>
@@ -228,7 +205,7 @@ bool tsAttributeMap::AddItem(const tsStringBase &name, int value)
 /// </returns>
 void tsAttributeMap::ClearAll ()
 {
-	m_list.clear();
+    tsEmptyNameValues(_list);
 }
 
 /// <summary>
@@ -239,9 +216,7 @@ void tsAttributeMap::ClearAll ()
 /// </param>
 void tsAttributeMap::RemoveItem(size_t index)
 {
-	auto it = m_list.begin();
-	std::advance(it, index);
-	m_list.erase(it);
+    tsRemoveNameValueByIndex(_list, (uint32_t)index);
 }
 
 /// <summary>
@@ -252,11 +227,7 @@ void tsAttributeMap::RemoveItem(size_t index)
 /// </param>
 void tsAttributeMap::RemoveItem(const tsStringBase &name)
 {
-	auto item = std::find_if(m_list.begin(), m_list.end(), [&name](__tsAttributeMapItem& item)->bool{ return item.m_name == name.c_str(); });
-	if ( item != m_list.end() )
-	{
-		m_list.erase(item);
-	}
+    tsRemoveNameValueByName(_list, name.c_str());
 }
 /// <summary>
 /// </summary>
@@ -267,14 +238,15 @@ void tsAttributeMap::RemoveItem(const tsStringBase &name)
 void tsAttributeMap::ToXML(tsStringBase &xml) const
 {
 	tsStringBase value;
+    uint32_t _count = (uint32_t)count();
 
-	for (auto item : m_list)
+    for (uint32_t i = 0; i < _count; i++)
 	{
 		if (xml.size() > 0)
 			xml += " ";
-		xml += item.m_name;
+        xml += name(i);
 		xml += "=\"";
-		TSPatchValueForXML(item.m_value, value);
+        TSPatchValueForXML(item(i), value);
 		xml += value;
 		xml += "\"";
 	}
@@ -288,91 +260,90 @@ void tsAttributeMap::ToXML(tsStringBase &xml) const
 /// </param>
 void tsAttributeMap::copyFrom(const tsAttributeMap &obj)
 {
-	m_list.clear();
-	for (const __tsAttributeMapItem& s : obj.m_list)
-	{
-		m_list.push_back(s);
-	}
+    ClearAll();
+    tsFreeNameValueList(&_list);
+
+    _list = tsDuplicateNameValueList(obj._list);
 }
 void tsAttributeMap::moveFrom(tsAttributeMap &&obj)
 {
-	m_list = std::move(obj.m_list);
+    _list = std::move(obj._list);
+    obj._list = nullptr;
 }
 
-void tsAttributeMap::remove_if(std::function<bool(const __tsAttributeMapItem& item)> func)
+void tsAttributeMap::remove_if(std::function<bool(const char* name, const char* item)> func)
 {
 	ptrdiff_t i;
 
-	for (i = m_list.size() - 1; i >= 0; i--)
+    for (i = count() - 1; i >= 0; i--)
 	{
-		if (func(m_list.at(i)))
+        if (func(tsGetNameValueName(_list, (uint32_t)i), tsGetNameValueValueByIndex(_list, (uint32_t)i)))
 		{
-			auto it = m_list.begin();
-			std::advance(it, i);
-			m_list.erase(it);
+            tsRemoveNameValueByIndex(_list, (uint32_t)i);
 		}
 	}
 }
 
-void tsAttributeMap::foreach(std::function<void(__tsAttributeMapItem& item)> func)
+void tsAttributeMap::foreach(std::function<void(const char* name, const char* item)> func)
 {
-	for (auto item : m_list)
+    for (uint32_t i = 0; i < count(); i++)
 	{ 
-		func(item); 
+        func(tsGetNameValueName(_list, i), tsGetNameValueValueByIndex(_list, i));
 	}
 }
 
-void tsAttributeMap::foreach(std::function<void(const __tsAttributeMapItem& item)> func) const
+void tsAttributeMap::foreach(std::function<void(const char* name, const char* item)> func) const
 {
-	for (auto item : m_list)
+    for (uint32_t i = 0; i < count(); i++)
 	{ 
-		func(item); 
+        func(tsGetNameValueName(_list, i), tsGetNameValueValueByIndex(_list, i));
 	}
 }
 
-tsStringBase tsAttributeMap::first_value_that(std::function<bool(const __tsAttributeMapItem& item)> func) const
+tsStringBase tsAttributeMap::first_value_that(std::function<bool(const char* name, const char* item)> func) const
 {
-	auto item = std::find_if(m_list.begin(), m_list.end(), [&func](const __tsAttributeMapItem& item)->bool{ return func(item); });
-	if (item == m_list.end())
+    for (uint32_t i = 0; i < count(); i++)
+    {
+        if (func(tsGetNameValueName(_list, i), tsGetNameValueValueByIndex(_list, i)))
+            return tsGetNameValueValueByIndex(_list, i);
+    }
 		return "";
-	return item->m_value;
 }
 
-tsStringBase tsAttributeMap::first_name_that(std::function<bool(const __tsAttributeMapItem& item)> func) const
+tsStringBase tsAttributeMap::first_name_that(std::function<bool(const char* name, const char* item)> func) const
 {
-	auto item = std::find_if(m_list.begin(), m_list.end(), [&func](const __tsAttributeMapItem& item)->bool{ return func(item); });
-	if (item == m_list.end())
+    for (uint32_t i = 0; i < count(); i++)
+    {
+        if (func(tsGetNameValueName(_list, i), tsGetNameValueValueByIndex(_list, i)))
+            return tsGetNameValueName(_list, i);
+    }
 		return "";
-	return item->m_value;
 }
 
 tsStringBase tsAttributeMap::tag(size_t index) const
 {
 	if (index >= count())
 		return "";
-	return m_list.at(index).m_tag;
+
+    return tsGetNameValueTagByIndex(_list, (uint32_t)index);
 }
 
 void tsAttributeMap::tag(size_t index, const tsStringBase& setTo)
 {
 	if (index >= count())
 		return ;
-	m_list.at(index).m_tag = setTo;
+    tsSetNameValueTagByIndex(_list, (uint32_t)index, setTo.c_str(), -1);
 }
 tsStringBase tsAttributeMap::tag(const tsStringBase &name) const
 {
-	auto item = std::find_if(m_list.begin(), m_list.end(), [&name](const __tsAttributeMapItem& item)->bool{ return item.m_name == name.c_str(); });
-
-	if (item == m_list.end())
-		return "";
-	return item->m_tag;
+    return tsGetNameValueTagByName(_list, name.c_str());
 }
 
 void tsAttributeMap::tag(const tsStringBase &name, const tsStringBase& setTo)
 {
-	auto item = std::find_if(m_list.begin(), m_list.end(), [&name](const __tsAttributeMapItem& item)->bool{ return item.m_name == name.c_str(); });
-
-	if (item == m_list.end())
-		return ;
-	item->m_tag = setTo;
+    tsSetNameValueTagByName(_list, name.c_str(), setTo.c_str(), -1);
+}
+bool tsAttributeMap::RenameItem(const tsStringBase &oldName, const tsStringBase &newName)
+{
+    return tsRenameNameValue(_list, oldName.c_str(), newName.c_str());
 }

@@ -31,6 +31,19 @@
 
 
 #include "core/compilerconfig.h"
+#ifdef __APPLE__
+#   include "CyberVEIL/CyberVEIL.h"
+#else
+#   include "CyberVEIL.h"
+#endif
+
+#include <initializer_list>
+#include <vector>
+#include <memory>
+#include <functional>
+#include <algorithm>
+#include <iostream>
+
 #include "SimpleOpt.h"
 
 extern void* cryptoNew(size_t size);
@@ -38,7 +51,6 @@ extern void cryptoDelete(void* ptr);
 
 #include "tsData.h"
 #include "tsStringBase.h"
-#include "CryptoUtf16.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 /// <summary>Convert XML reserved characters into the xml escape sequences.</summary>
@@ -47,13 +59,6 @@ extern void cryptoDelete(void* ptr);
 /// <param name="out">  [in,out] The destination.</param>
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void TSPatchValueForXML(const tsStringBase &value, tsStringBase &out);
-////////////////////////////////////////////////////////////////////////////////////////////////////
-/// <summary>Convert the XML escape sequences back into the XML reserved characters.</summary>
-///
-/// <param name="value">The string to patch.</param>
-/// <param name="out">  [in,out] The destination.</param>
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void TSPatchValueFromXML(const tsStringBase &value, tsStringBase &out);
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 /// <summary>Convert the error information into an XML string and append it to Results</summary>
 ///
@@ -72,21 +77,7 @@ bool xp_ReadAllText(const tsStringBase& filename, tsStringBase& contents);
 bool xp_ReadAllBytes(const tsStringBase& filename, tsData& contents);
 bool xp_WriteText(const tsStringBase& filename, const tsStringBase& contents);
 bool xp_WriteBytes(const tsStringBase& filename, const tsData& contents);
-bool xp_FileExists(const tsStringBase &path);
-bool xp_CreateDirectory(const tsStringBase &path, bool UserOnly);
 
-#ifdef _WIN32
-	/// <summary>A macro that defines cross platform path separator character.</summary>
-	#define XP_PATH_SEP_CHAR '\\'
-	/// <summary>A macro that defines cross platform path separator string.</summary>
-	#define XP_PATH_SEP_STR "\\"
-	/// <summary>A macro that defines cross platform pathlist separator.</summary>
-	#define XP_PATHLIST_SEPARATOR ';'
-#else
-	#define XP_PATH_SEP_CHAR '/'
-	#define XP_PATH_SEP_STR "/"
-	#define XP_PATHLIST_SEPARATOR ':'
-#endif
 
 typedef class IObject
 {
@@ -140,7 +131,7 @@ public:
 #endif // INCLUDE_DATASET
 	bool operator()(GUID data) const
 	{
-		MY_UNREFERENCED_PARAMETER(data);
+		UNREFERENCED_PARAMETER(data);
 		return false;
 	}
 	//bool operator()(const tscrypto::tsCryptoDate& dt) const

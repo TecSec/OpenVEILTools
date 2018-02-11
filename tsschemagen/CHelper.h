@@ -77,35 +77,51 @@ public:
         LoadSchemaInfo(schemaFile);
 
         header << "//\r\n";
-        header << "// This file is the property of TecSec, Inc. (c)2017 TecSec, Inc.\r\n";
+        header << "//\r\n";
+        header << "// This file is the property of TecSec, Inc. (c) 2018 TecSec, Inc.\r\n";
         header << "// All rights are reserved to TecSec.\r\n";
         header << "//\r\n";
-        header << "// The information in this file may be protected by one or more of the following\r\n";
-        header << "// U.S. patents, as well as pending U.S. patent applications and foreign patents:\r\n";
-        header << "// 5,369,702 5,369,707 5,375,169 5,410,599 5,432,851 5,680,452 5,717,755 5,787,173 \r\n";
-        header << "// 5,898,781 6,075,865 6,266,417 6,490,680 6,542,608 6,549,623 6,606,386 6,608,901 \r\n";
-        header << "// 6,684,330 6,694,433 6,754,820 6,845,453 7,016,495 7,079,653 7,089,417 7,095,852 \r\n";
-        header << "// 7,111,173 7,131,009 7,178,030 7,212,632 7,490,240 7,539,855 7,738,660 7,817,800 \r\n";
-        header << "// 7,974,410 8,077,870\r\n";
+        header << "// Licensed Technology is protected by U.S. copyright laws and international \r\n";
+        header << "// treaty provisions, as well as by issued U.S. patents and U.S. trade secret \r\n";
+        header << "// law. Licensee shall not copy the printed materials included in the Licensed \r\n";
+        header << "// Technology. TecSec owns all title and intellectual property in and to the \r\n";
+        header << "// total software product, including but not limited to any elements incorporated \r\n";
+        header << "// therein. No rights to ownership of any intellectual property are transferred \r\n";
+        header << "// by this Agreement.\r\n";
         header << "//\r\n";
+        header << "//  This product is protected by one or more of the following U.S. patents, as \r\n";
+        header << "//  well as pending U.S. patent applications and foreign patents;  \r\n";
+        header << "//  6,490,680; 6,542,608; 6,549,623; 6,606,386; 6,608,901; 6,684,330; 6,694,433; \r\n";
+        header << "//  6,754,820; 6,694,433; 6,754,820; 6,845,453; 7,016,495; 7,079,653; 7,089,417; \r\n";
+        header << "//  7,095,851; 7,095,852; 7,111,173; 7,131,009; 7,490,240; 7,539,855;7,738,660; \r\n";
+        header << "//  7,817,800; 7,974,410; 8,077,870; 8,285,991; 8,712,046. \r\n";
+        header << "//\r\n";
+        header << "// Written by Roger Butler, TecSec, Inc\r\n";
         header << "\r\n";
         header << "// GENERATED CODE - DO NOT MODIFY\r\n";
         header << "\r\n";
         header << "#ifndef __" + Schema()->SymbolName() + "__\r\n";
         header << "#define __" + Schema()->SymbolName() + "__\r\n";
 
-        source << "//\r\n";
-        source << "// This file is the property of TecSec, Inc. (c)2017 TecSec, Inc.\r\n";
+        source << "// This file is the property of TecSec, Inc. (c) 2018 TecSec, Inc.\r\n";
         source << "// All rights are reserved to TecSec.\r\n";
         source << "//\r\n";
-        source << "// The information in this file may be protected by one or more of the following\r\n";
-        source << "// U.S. patents, as well as pending U.S. patent applications and foreign patents:\r\n";
-        source << "// 5,369,702 5,369,707 5,375,169 5,410,599 5,432,851 5,680,452 5,717,755 5,787,173 \r\n";
-        source << "// 5,898,781 6,075,865 6,266,417 6,490,680 6,542,608 6,549,623 6,606,386 6,608,901 \r\n";
-        source << "// 6,684,330 6,694,433 6,754,820 6,845,453 7,016,495 7,079,653 7,089,417 7,095,852 \r\n";
-        source << "// 7,111,173 7,131,009 7,178,030 7,212,632 7,490,240 7,539,855 7,738,660 7,817,800 \r\n";
-        source << "// 7,974,410 8,077,870\r\n";
+        source << "// Licensed Technology is protected by U.S. copyright laws and international \r\n";
+        source << "// treaty provisions, as well as by issued U.S. patents and U.S. trade secret \r\n";
+        source << "// law. Licensee shall not copy the printed materials included in the Licensed \r\n";
+        source << "// Technology. TecSec owns all title and intellectual property in and to the \r\n";
+        source << "// total software product, including but not limited to any elements incorporated \r\n";
+        source << "// therein. No rights to ownership of any intellectual property are transferred \r\n";
+        source << "// by this Agreement.\r\n";
         source << "//\r\n";
+        source << "//  This product is protected by one or more of the following U.S. patents, as \r\n";
+        source << "//  well as pending U.S. patent applications and foreign patents;  \r\n";
+        source << "//  6,490,680; 6,542,608; 6,549,623; 6,606,386; 6,608,901; 6,684,330; 6,694,433; \r\n";
+        source << "//  6,754,820; 6,694,433; 6,754,820; 6,845,453; 7,016,495; 7,079,653; 7,089,417; \r\n";
+        source << "//  7,095,851; 7,095,852; 7,111,173; 7,131,009; 7,490,240; 7,539,855;7,738,660; \r\n";
+        source << "//  7,817,800; 7,974,410; 8,077,870; 8,285,991; 8,712,046. \r\n";
+        source << "//\r\n";
+        source << "// Written by Roger Butler, TecSec, Inc\r\n";
         source << "\r\n";
         source << "// GENERATED CODE - DO NOT MODIFY\r\n";
         source << "\r\n";
@@ -309,7 +325,7 @@ protected:
         header << "    void* _userField_free;\r\n";
 
 
-        source << "#define g" << classname << "Count " << colList.size() << "\r\n";
+        source << "#define g" << classname << "Count " << tsStringBase().append((uint32_t)colList.size()) << "\r\n";
         source << "static const PODDefinition g" << classname << "Defs[g" << classname << "Count] =\r\n";
         source << "{\r\n";
         std::for_each(colList.begin(), colList.end(), [this, &ConstPart, &TypePart, &RightPart, &primaryKeys, &header, &source, &classname](std::shared_ptr<TableColumn> c) {
@@ -381,7 +397,7 @@ protected:
 
         source << "static const PODStructDefinition g" << classname << "StructDef =\r\n";
         source << "{\r\n";
-        source << "    \"" << classname << "\", \"" << classname.substr(0, classname.size() - 4) << "\", sizeof(" << classname << "), g" << classname << "Count, g" << classname << "Defs, " << idxList.size() << ", g" << classname << "IndexList\r\n";
+        source << "    \"" << classname << "\", \"" << classname.substr(0, classname.size() - 4) << "\", sizeof(" << classname << "), g" << classname << "Count, g" << classname << "Defs, " << tsStringBase().append((uint32_t)idxList.size()) << ", g" << classname << "IndexList\r\n";
         source << "};\r\n";
     }
     void AddIndexVariables(tsStringBase& header, tsStringBase& source, std::shared_ptr<ColumnContainer> cntr, std::shared_ptr<Index> idx, const tsStringBase& name, const tsStringBase& classname)
@@ -417,7 +433,7 @@ protected:
 
         source << "static const PODIndexDefinition g" << classname << "Idx_" << idxNamePart << " =\r\n";
         source << "{\r\n";
-        source << "    \"" << idxNamePart << "\", " << ((idxNamePart == "_PK") ? "ts_true" : "ts_false") << ", " << colList.size() << ", g" << classname << "IdxList_" << idxNamePart << "\r\n";
+        source << "    \"" << idxNamePart << "\", " << ((idxNamePart == "_PK") ? "ts_true" : "ts_false") << ", " << tsStringBase().append((uint32_t)colList.size()) << ", g" << classname << "IdxList_" << idxNamePart << "\r\n";
         source << "};\r\n";
 
     }

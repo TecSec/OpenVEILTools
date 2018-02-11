@@ -93,7 +93,7 @@ tsStringBase NamespaceSupport::getEBNamespaceName() const
 {
 	for (size_t i = 0; i < m_namespaces.count(); i++)
 	{
-		if (_stricmp(m_namespaces.item(i).c_str(), gEbNamespace) == 0)
+		if (tsStriCmp(m_namespaces.item(i).c_str(), gEbNamespace) == 0)
 		{
 			return m_namespaces.name(i);
 		}
@@ -112,7 +112,7 @@ tsStringBase NamespaceSupport::getSoap12NamespaceName() const
 {
 	for (size_t i = 0; i < m_namespaces.count(); i++)
 	{
-		if (_stricmp(m_namespaces.item(i).c_str(), gSoap12Namespace) == 0)
+		if (tsStriCmp(m_namespaces.item(i).c_str(), gSoap12Namespace) == 0)
 		{
 			return m_namespaces.name(i);
 		}
@@ -232,7 +232,7 @@ std::shared_ptr<tsXmlNode> tsXmlNode::StartTextSubnode(const tsStringBase &name,
 {
 	char buffer[100];
 
-	_i64toa_s(setTo, buffer, sizeof(buffer), (int64_t)10);
+	tsSnPrintf(buffer, sizeof(buffer), "%lld", setTo);
 	return StartTextSubnode(name, buffer);
 }
 
@@ -240,7 +240,7 @@ std::shared_ptr<tsXmlNode> tsXmlNode::StartTextSubnode(const tsStringBase &name,
 {
 	char buffer[100];
 
-	_i64toa_s(setTo, buffer, sizeof(buffer), (int64_t)10);
+	tsSnPrintf(buffer, sizeof(buffer), "%lld", setTo);
 	return StartTextSubnode(name, buffer);
 }
 
@@ -342,7 +342,7 @@ bool tsXmlNode::NodeText(const tsStringBase &setTo)
 
 int tsXmlNode::NodeTextAsNumber() const
 {
-	return atoi(NodeText().c_str());
+	return tsStrToInt(NodeText().c_str());
 }
 
 void tsXmlNode::NodeTextAsNumber(int setTo)
@@ -737,7 +737,7 @@ bool tsXmlNode::CheckErrorHandling() const
 {
 	if (!Attributes().hasItem("Errors"))
 		return false;
-	return (_stricmp(Attributes().item("Errors").c_str(), ("Ignore")) == 0);
+	return (tsStriCmp(Attributes().item("Errors").c_str(), ("Ignore")) == 0);
 }
 
 void tsXmlNode::ClearErrors()
@@ -1399,18 +1399,18 @@ bool tsXmlNode::DecryptForChannel(tsStringBase &/*Results*/)
 }
 
 tsXmlParserCallback::resultCodes tsXmlNode::StartNode(const tsStringBase &NodeName,
-	tsAttributeMap &attributes,
+	const tsAttributeMap &attributes,
 	const tsStringBase &InnerXML,
 	bool SingleNode,
 	tsStringBase &Results)
 {
 
-	if (NodeName == NULL)
+	if (NodeName.empty())
 	{
 		AddError("AgentRequestor", "CARNodeSubmit::StartNode()", "Node Name was NULL", 0);
 		return tsXmlParserCallback::rcAbort;
 	}
-	/*if ( TsStrCmp(NodeName, ("Error")) == 0 )
+	/*if ( tsStrCmp(NodeName, ("Error")) == 0 )
 	{
 		if (!m_RunnableParseNode) {
 			tsXmlNode::AddError("AgentRequestor", "CARNodeSubmit::StartNode()", "Unexpected null node", 0);
@@ -1646,7 +1646,7 @@ void tsXmlNode::ConvertNodesToAttributes()
 
 void tsXmlNode::__convertErrorNode(std::shared_ptr<tsXmlNode> pNode, std::shared_ptr<tsXmlNode> errorNode)
 {
-	pNode->AddFirstError(errorNode->Attributes().item("Component"), errorNode->Attributes().item("Method"), errorNode->Attributes().item("Value"), atoi(errorNode->Attributes().item("Number").c_str()));
+	pNode->AddFirstError(errorNode->Attributes().item("Component"), errorNode->Attributes().item("Method"), errorNode->Attributes().item("Value"), tsStrToInt(errorNode->Attributes().item("Number").c_str()));
 }
 
 void tsXmlNode::__convertErrorNodes(std::shared_ptr<tsXmlNode> pNode)
@@ -1775,7 +1775,7 @@ std::shared_ptr<tsXmlNode> tsXmlNode::ChildByNameWithAttributeValue(const tsStri
 
 		if (strcmp(_name.c_str(), node->NodeName().c_str()) == 0)
 		{
-			if (node->Attributes().hasItem(attributeName) && _stricmp(node->Attributes().item(attributeName).c_str(), tsStringBase(attributeValue).c_str()) == 0)
+			if (node->Attributes().hasItem(attributeName) && tsStriCmp(node->Attributes().item(attributeName).c_str(), tsStringBase(attributeValue).c_str()) == 0)
 			{
 				return node;
 			}
@@ -1792,7 +1792,7 @@ std::shared_ptr<tsXmlNode> tsXmlNode::ChildByNameWithAttributeValue(const tsStri
 
 		if (strcmp(_name.c_str(), node->NodeName().c_str()) == 0)
 		{
-			if (node->Attributes().hasItem(attributeName) && _stricmp(node->Attributes().item(attributeName).c_str(), tsStringBase(attributeValue).c_str()) == 0)
+			if (node->Attributes().hasItem(attributeName) && tsStriCmp(node->Attributes().item(attributeName).c_str(), tsStringBase(attributeValue).c_str()) == 0)
 			{
 				return node;
 			}
@@ -2022,8 +2022,8 @@ static bool processAttributePredicate(std::shared_ptr<tsXmlNode> node, const tsS
 	}
 	else if (strchr(value.c_str(), '.') != NULL || strchr(node->Attributes().item(name).c_str(), '.') != NULL)
 	{
-		double left = atof(node->Attributes().item(name).c_str());
-		double right = atof(value.c_str());
+		double left = tsStrToDouble(node->Attributes().item(name).c_str());
+		double right = tsStrToDouble(value.c_str());
 
 		if (strcmp(op.c_str(), ("=")) == 0)
 		{
@@ -2056,8 +2056,8 @@ static bool processAttributePredicate(std::shared_ptr<tsXmlNode> node, const tsS
 	}
 	else
 	{
-		int64_t left = _atoi64(node->Attributes().item(name).c_str());
-		int64_t right = _atoi64(value.c_str());
+		int64_t left = tsStrToInt64(node->Attributes().item(name).c_str());
+		int64_t right = tsStrToInt64(value.c_str());
 
 		if (strcmp(op.c_str(), ("=")) == 0)
 		{
@@ -2163,8 +2163,8 @@ static bool processNodePredicate(std::shared_ptr<tsXmlNode> node, const tsString
 		}
 		else if (strchr(value.c_str(), '.') != NULL || strchr(nodeText.c_str(), '.') != NULL)
 		{
-			double left = atof(nodeText.c_str());
-			double right = atof(value.c_str());
+			double left = tsStrToDouble(nodeText.c_str());
+			double right = tsStrToDouble(value.c_str());
 
 			if (strcmp(op.c_str(), ("=")) == 0)
 			{
@@ -2215,8 +2215,8 @@ static bool processNodePredicate(std::shared_ptr<tsXmlNode> node, const tsString
 		}
 		else
 		{
-			int64_t left = _atoi64(nodeText.c_str());
-			int64_t right = _atoi64(value.c_str());
+			int64_t left = tsStrToInt64(nodeText.c_str());
+			int64_t right = tsStrToInt64(value.c_str());
 
 			if (strcmp(op.c_str(), ("=")) == 0)
 			{
@@ -2631,19 +2631,19 @@ void tsXmlNode::SetNamedChildNodeText(const tsStringBase& name, const tsStringBa
 
 void tsXmlNode::RemoveAllNamespaces()
 {
-	Attributes().remove_if([](const __tsAttributeMapItem& item) -> bool {
-		if (strcmp(item.m_name.c_str(), "xmlns") == 0 || strncmp(item.m_name.c_str(), "xmlns:", 6) == 0)
+	Attributes().remove_if([](const char* name, const char* item) -> bool {
+		if (tsStrCmp(name, "xmlns") == 0 || tsStrnCmp(name, "xmlns:", 6) == 0)
 			return true;
 		return false;
 	});
-	Attributes().foreach([this](__tsAttributeMapItem& item) {
-		if (strchr(item.m_name.c_str(), ':') != nullptr)
+	Attributes().foreach([this](const char* name, const char* item) {
+		if (tsStrChr(name, ':') != nullptr)
 		{
-			tsStringBaseList parts = item.m_name.split(":");
-			tsStringBase newName = parts.back();
+            const char* p = tsStrChr(name, ':');
+            tsStringBase newName = p + 1;
 			if (!this->Attributes().hasItem(newName))
 			{
-				item.m_name = newName;
+                Attributes().RenameItem(name, newName);
 			}
 		}
 	});

@@ -38,9 +38,18 @@
 tsStringBase gOutputPath;
 tsStringBase gInputPath;
 tsStringBase gExportPath;
-bool gUseConst = false;
-bool gAsC = false;
+int gUseConst = 0;
+int gAsC = 0;
 
+static struct ts_getopt_option long_options[] =
+{
+    { "output",  ts_required_argument, 0, 'o' },
+    { "exports",  ts_required_argument, 0, 'e' },
+    { "c-struct",  ts_required_argument, &gAsC, 1 },
+    { "use-const",  ts_required_argument, &gUseConst, 1 },
+    { "help", ts_no_argument, 0, 'h' },
+    { 0, 0, 0, 0 }
+};
 
 enum {
 	OPT_HELP = 0, OPT_OUTPUT, OPT_EXPORTS, OPT_USE_CONST, OPT_C_STRUCT
@@ -52,12 +61,16 @@ CSimpleOpt::SOption g_rgOptions1[] =
 	{ OPT_HELP, "-h", SO_NONE },
 	{ OPT_HELP, "-help", SO_NONE },
 	{ OPT_HELP, "--help", SO_NONE },
+
 	{ OPT_OUTPUT, "-o", SO_REQ_SEP },
 	{ OPT_OUTPUT, "--output", SO_REQ_SEP },
+
 	{ OPT_EXPORTS, "-e", SO_REQ_SEP },
 	{ OPT_EXPORTS, "--exports", SO_REQ_SEP },
+
 	{ OPT_USE_CONST, "-c", SO_NONE },
 	{ OPT_USE_CONST, "--use-const", SO_NONE },
+
     { OPT_C_STRUCT, "--c-struct", SO_NONE },
 	SO_END_OF_OPTIONS
 };
@@ -135,11 +148,11 @@ static builtins gBuiltins[] =
 	{ "OctetString",	"tscrypto::tsCryptoData",		"",			 true,  true,  false, false, false, false, false, "tscrypto::Asn1Metadata2::tp_data",			"obj.add(\"{JSONName}\", _{Name}.ToBase64());",						"obj.add(\"{JSONName}\", _{Name}.ToBase64());",						"_{Name} = obj.AsString(\"{JSONName}\").Base64ToData();",										"tmp = fld.AsString().Base64ToData();",											"_{Name}(tscrypto::tsCryptoData(\"{Initializer}\", tscrypto::tsCryptoData::HEX))",	"Octet",			"tscrypto::tsCryptoData", },
 	{ "Number",			"tscrypto::tsCryptoData",		"",			 true,  true,  true,  false, false, false, false, "tscrypto::Asn1Metadata2::tp_number",			"obj.add(\"{JSONName}\", _{Name}.ToBase64());",						"obj.add(\"{JSONName}\", _{Name}.ToBase64());",						"_{Name} = obj.AsString(\"{JSONName}\").Base64ToData();",										"tmp = fld.AsString().Base64ToData();",											"_{Name}(tscrypto::tsCryptoData(\"{Initializer}\", tscrypto::tsCryptoData::HEX))",	"Number",			"tscrypto::tsCryptoData", },
 	{ "Bitstring",		"tscrypto::Asn1Bitstring",		"",			 true,  true,  false, false, false, false, false, "tscrypto::Asn1Metadata2::tp_bits",			"obj.add(\"{JSONName}\", _{Name}.ToBase64());",						"obj.add(\"{JSONName}\", _{Name}.rawData().ToBase64());",			"_{Name}.rawData(obj.AsString(\"{JSONName}\").Base64ToData());",								"tmp.rawData(fld.AsString().Base64ToData());",									"_{Name}({Initializer})",															"BitString",		"tscrypto::Asn1Bitstring", },
-	{ "Int8",			"int8_t",						"0",		 true,  false, false, false, false, false, false, "tscrypto::Asn1Metadata2::tp_int8",			"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"_{Name} = (unsigned char)TsStrToInt64(obj.AsString(\"{JSONName}\").c_str());",					"tmp = (unsigned char)TsStrToInt64(fld.AsString().c_str());",					"_{Name}({Initializer})",															"Number",			"int8_t", },
-	{ "Char",			"char",							"0",		 true,  false, false, false, false, false, false, "tscrypto::Asn1Metadata2::tp_char",			"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"_{Name} = (char)TsStrToInt64(obj.AsString(\"{JSONName}\").c_str());",							"tmp = (char)TsStrToInt64(fld.AsString().c_str());",							"_{Name}({Initializer})",															"Number",			"char", },
-	{ "Int16",			"int16_t",						"0",		 true,  false, false, false, false, false, false, "tscrypto::Asn1Metadata2::tp_int16",			"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"_{Name} = (short)TsStrToInt64(obj.AsString(\"{JSONName}\").c_str());",							"tmp = (short)TsStrToInt64(fld.AsString().c_str());",							"_{Name}({Initializer})",															"Number",			"int16_t", },
-	{ "Int32",			"int32_t",						"0",		 true,  false, false, false, false, false, false, "tscrypto::Asn1Metadata2::tp_int32",			"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"_{Name} = (int)TsStrToInt64(obj.AsString(\"{JSONName}\").c_str());",							"tmp = (int)TsStrToInt64(fld.AsString().c_str());",								"_{Name}({Initializer})",															"Number",			"int32_t", },
-	{ "Int64",			"int64_t",						"0",		 true,  false, false, false, false, false, false, "tscrypto::Asn1Metadata2::tp_int64",			"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"_{Name} = TsStrToInt64(obj.AsString(\"{JSONName}\").c_str());",								"tmp = TsStrToInt64(fld.AsString().c_str());",									"_{Name}({Initializer})",															"Number",			"int64_t", },
+    { "Int8",			"int8_t",						"0",		 true,  false, false, false, false, false, false, "tscrypto::Asn1Metadata2::tp_int8",			"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"_{Name} = (unsigned char)tsStrToInt64(obj.AsString(\"{JSONName}\").c_str());",					"tmp = (unsigned char)tsStrToInt64(fld.AsString().c_str());",					"_{Name}({Initializer})",															"Number",			"int8_t", },
+    { "Char",			"char",							"0",		 true,  false, false, false, false, false, false, "tscrypto::Asn1Metadata2::tp_char",			"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"_{Name} = (char)tsStrToInt64(obj.AsString(\"{JSONName}\").c_str());",							"tmp = (char)tsStrToInt64(fld.AsString().c_str());",							"_{Name}({Initializer})",															"Number",			"char", },
+    { "Int16",			"int16_t",						"0",		 true,  false, false, false, false, false, false, "tscrypto::Asn1Metadata2::tp_int16",			"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"_{Name} = (short)tsStrToInt64(obj.AsString(\"{JSONName}\").c_str());",							"tmp = (short)tsStrToInt64(fld.AsString().c_str());",							"_{Name}({Initializer})",															"Number",			"int16_t", },
+    { "Int32",			"int32_t",						"0",		 true,  false, false, false, false, false, false, "tscrypto::Asn1Metadata2::tp_int32",			"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"_{Name} = (int)tsStrToInt64(obj.AsString(\"{JSONName}\").c_str());",							"tmp = (int)tsStrToInt64(fld.AsString().c_str());",								"_{Name}({Initializer})",															"Number",			"int32_t", },
+    { "Int64",			"int64_t",						"0",		 true,  false, false, false, false, false, false, "tscrypto::Asn1Metadata2::tp_int64",			"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"_{Name} = tsStrToInt64(obj.AsString(\"{JSONName}\").c_str());",								"tmp = tsStrToInt64(fld.AsString().c_str());",									"_{Name}({Initializer})",															"Number",			"int64_t", },
 	{ "String",			"tscrypto::tsCryptoStringBase",	"",			 true,  false, false, false, false, false, false, "tscrypto::Asn1Metadata2::tp_string",			"obj.add(\"{JSONName}\", _{Name});",								"obj.add(\"{JSONName}\", _{Name});",								"_{Name} = obj.AsString(\"{JSONName}\");",														"tmp = fld.AsString();",														"_{Name}({Initializer})",															"UTF8String",		"tscrypto::tsCryptoStringBase", },
 	{ "TeletexString",	"tscrypto::tsCryptoStringBase",	"",			 true,  false, false, false, false, false, false, "tscrypto::Asn1Metadata2::tp_string",			"obj.add(\"{JSONName}\", _{Name});",								"obj.add(\"{JSONName}\", _{Name});",								"_{Name} = obj.AsString(\"{JSONName}\");",														"tmp = fld.AsString();",														"_{Name}({Initializer})",															"T61String",		"tscrypto::tsCryptoStringBase", },
 	{ "T61String",		"tscrypto::tsCryptoStringBase",	"",			 true,  false, false, false, false, false, false, "tscrypto::Asn1Metadata2::tp_string",			"obj.add(\"{JSONName}\", _{Name});",								"obj.add(\"{JSONName}\", _{Name});",								"_{Name} = obj.AsString(\"{JSONName}\");",														"tmp = fld.AsString();",														"_{Name}({Initializer})",															"T61String",		"tscrypto::tsCryptoStringBase", },
@@ -154,10 +167,10 @@ static builtins gBuiltins[] =
 	{ "Date",			"tscrypto::tsCryptoDate",		"",			 true,  false, false, true,  false, false, false, "tscrypto::Asn1Metadata2::tp_date",			"obj.add(\"{JSONName}\", ZuluToDateTime(_{Name}.AsZuluTime()));",	"obj.add(\"{JSONName}\", ZuluToDateTime(_{Name}.AsZuluTime()));",	"_{Name} = tscrypto::tsCryptoDate(obj.AsString(\"{JSONName}\"), tscrypto::tsCryptoDate::ODBC);","tmp = tscrypto::tsCryptoDate(fld.AsString(), tscrypto::tsCryptoDate::ODBC);",	"_{Name}({Initializer})",															"GeneralizedTime",	"tscrypto::tsCryptoDate", },
 	{ "GeneralizedTime","tscrypto::tsCryptoDate",		"",			 true,  false, false, true,  false, false, false, "tscrypto::Asn1Metadata2::tp_date",			"obj.add(\"{JSONName}\", ZuluToDateTime(_{Name}.AsZuluTime()));",	"obj.add(\"{JSONName}\", ZuluToDateTime(_{Name}.AsZuluTime()));",	"_{Name} = tscrypto::tsCryptoDate(obj.AsString(\"{JSONName}\"), tscrypto::tsCryptoDate::ODBC);","tmp = tscrypto::tsCryptoDate(fld.AsString(), tscrypto::tsCryptoDate::ODBC);",	"_{Name}({Initializer})",															"GeneralizedTime",	"tscrypto::tsCryptoDate", },
 	{ "UTCTime",		"tscrypto::tsCryptoDate",		"",			 true,  false, false, true,  false, false, false, "tscrypto::Asn1Metadata2::tp_date",			"obj.add(\"{JSONName}\", ZuluToDateTime(_{Name}.AsZuluTime()));",	"obj.add(\"{JSONName}\", ZuluToDateTime(_{Name}.AsZuluTime()));",	"_{Name} = tscrypto::tsCryptoDate(obj.AsString(\"{JSONName}\"), tscrypto::tsCryptoDate::ODBC);","tmp = tscrypto::tsCryptoDate(fld.AsString(), tscrypto::tsCryptoDate::ODBC);",	"_{Name}({Initializer})",															"UTCTime",			"tscrypto::tsCryptoDate", },
-	{ "Enum",			"enum",							"0",		 true,  false, false, false, false, false, false, "tscrypto::Asn1Metadata2::tp_int32",			"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"_{Name} = ({CppType})TsStrToInt64(obj.AsString(\"{JSONName}\").c_str());",						"tmp = ({CppType})TsStrToInt64(fld.AsString().c_str());",						"_{Name}({Initializer})",															"Enumerated",		"enum", },
+    { "Enum",			"enum",							"0",		 true,  false, false, false, false, false, false, "tscrypto::Asn1Metadata2::tp_int32",			"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"_{Name} = ({CppType})tsStrToInt64(obj.AsString(\"{JSONName}\").c_str());",						"tmp = ({CppType})tsStrToInt64(fld.AsString().c_str());",						"_{Name}({Initializer})",															"Enumerated",		"enum", },
 	{ "Null",			"tscrypto::Asn1NULL",			"",			 true,  false, false, false, false, false, false, "tscrypto::Asn1Metadata2::tp_null",			"obj.add(\"{JSONName}\");",											"obj.add(\"{JSONName}\");",											"/* null field */",																				"/* null field */",																"_{Name}({Initializer})",															"NULL",				"tscrypto::Asn1NULL", },
 	{ "Any",			"tscrypto::Asn1AnyField",		"",			 true,  true,  false, false, false, true,  false, "tscrypto::Asn1Metadata2::tp_any",			"obj.add(\"{JSONName}\", _{Name}.toJSON());",						"obj.add(\"{JSONName}\", _{Name}.toJSON());",						"_{Name}.fromJSON(obj.AsObject(\"{JSONName}\"));",												"tmp.fromJSON(fld.AsObject());",												"_{Name}({Initializer})",															"",					"tscrypto::Asn1AnyField", },
-	{ "NamedInt",		"NamedInt",						"0",		 true,  false, false, false, false, false, false, "tscrypto::Asn1Metadata2::tp_int32",			"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"_{Name} = ({CppType})TsStrToInt64(obj.AsString(\"{JSONName}\").c_str());",						"tmp = ({CppType})TsStrToInt64(fld.AsString().c_str());",						"_{Name}({Initializer})",															"Enumerated",		"tscrypto::NamedInt", },
+    { "NamedInt",		"NamedInt",						"0",		 true,  false, false, false, false, false, false, "tscrypto::Asn1Metadata2::tp_int32",			"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"obj.add(\"{JSONName}\", (int64_t)_{Name});",						"_{Name} = ({CppType})tsStrToInt64(obj.AsString(\"{JSONName}\").c_str());",						"tmp = ({CppType})tsStrToInt64(fld.AsString().c_str());",						"_{Name}({Initializer})",															"Enumerated",		"tscrypto::NamedInt", },
 
 	{ "Sequence",		"tscrypto::Asn1DataBaseClass",	"",			 false,  false, false, false, false, true,  true,  "tscrypto::Asn1Metadata2::tp_struct",		"obj.add(\"{JSONName}\", _{Name}.toJSON());",						"obj.add(\"{JSONName}\", (({struct}*)_{Name}.get())->toJSON());",	"",																								"",																				"_{Name}(nullptr)",																	"Sequence",			"std::shared_ptr<tscrypto::Asn1DataBaseClass>", },
 	{ "SequenceField",	"tscrypto::Asn1DataBaseClass",	"",			 false,  false, false, false, false, true,  true,  "tscrypto::Asn1Metadata2::tp_struct",		"obj.add(\"{JSONName}\", _{Name}.toJSON());",						"obj.add(\"{JSONName}\", (({struct}*)_{Name}.get())->toJSON());",	"",																								"",																				"_{Name}(nullptr)",																	"Sequence",			"std::shared_ptr<tscrypto::Asn1DataBaseClass>", },
@@ -341,8 +354,17 @@ const char* getElementTag(const tsStringBase& eleType)
 	return "";
 }
 
-int main(int argc, char* argv[])
+int main(int argc, const char* argv[])
 {
+    int c;
+    int option_index;
+
+#if defined(_DEBUG) && defined(_WIN32)
+    //_CrtSetBreakAlloc(176);
+    //_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF | _CRTDBG_CHECK_ALWAYS_DF | _CRTDBG_DELAY_FREE_MEM_DF); //  _CRTDBG_CHECK_ALWAYS_DF _CRTDBG_CHECK_EVERY_128_DF | _CRTDBG_DELAY_FREE_MEM_DF | |  
+    //TS_EnableHeapCheckOnEachAllocOrFree();
+#endif
+
 	//std::cout << std::boolalpha;
 	//std::cout << "'tsCryptoData' is standardLayout:  " << std::is_standard_layout<tsCryptoData>::value << std::endl;
 	//std::cout << "'tsCryptoString' is standardLayout:  " << std::is_standard_layout<tsCryptoString>::value << std::endl;
@@ -352,40 +374,59 @@ int main(int argc, char* argv[])
 	//std::cout << "'tsCryptoData' is standardLayout:  " << std::is_standard_layout<tsCryptoData>::value << std::endl;
 
 
+    if (argc == 1)
+    {
+        Usage();
+        return 1;
+    }
 
-	CSimpleOpt args(argc, argv, g_rgOptions1, SO_O_NOERR | SO_O_ICASE | SO_O_SHORTARG);
+    while (1)
+    {
+        /* getopt_long stores the option index here. */
+        option_index = 0;
 
-	while (args.Next())
-	{
-		if (args.LastError() == SO_SUCCESS)
-		{
-			if (args.OptionId() == OPT_HELP)
-			{
+        c = ts_getopt_long(argc, argv, "chHo:e:", long_options, &option_index);
+
+        /* Detect the end of the options. */
+        if (c == -1)
+            break;
+
+        switch (c)
+        {
+        case 0:
+            /* If this option set a flag, do nothing else now. */
+            if (long_options[option_index].flag != 0)
+                break;
+            printf("option %s", long_options[option_index].name);
+            if (ts_get_optarg())
+                printf(" with arg %s", ts_get_optarg());
+            printf("\n");
+            break;
+
+        case 'c':
+            gUseConst = 1;
+            break;
+
+        case 'e':
+            gExportPath = ts_get_optarg();
+            if (gExportPath.size() > 0 && gExportPath[gExportPath.size() - 1] != TS_PATH_SEP_CHAR)
+                gExportPath.append(TS_PATH_SEP_STR);
+            break;
+        case 'o':
+            gOutputPath = ts_get_optarg();
+            break;
+        case '?':
+        case 'h':
 				Usage();
 				return 0;
-			}
-			else if (args.OptionId() == OPT_OUTPUT)
-			{
-				gOutputPath = args.OptionArg();
-			}
-			else if (args.OptionId() == OPT_EXPORTS)
-			{
-				gExportPath = args.OptionArg();
-				if (gExportPath.size() > 0 && gExportPath[gExportPath.size() - 1] != XP_PATH_SEP_CHAR)
-					gExportPath.append(XP_PATH_SEP_STR);
-			}
-			else if (args.OptionId() == OPT_USE_CONST)
-			{
-				gUseConst = true;
-			}
-			else if (args.OptionId() == OPT_C_STRUCT)
-			{
-				gAsC = true;
-			}
+
+        default:
+            return(1);
 		}
 	}
 
-	if (args.FileCount() == 0)
+    /* Print any remaining command line arguments (not options). */
+    if (ts_get_optind() >= argc)
 	{
 		Usage();
 		return 1;
@@ -400,28 +441,28 @@ int main(int argc, char* argv[])
 #endif
 	}
 
-	if (gOutputPath[gOutputPath.size() - 1] != XP_PATH_SEP_CHAR)
+    if (gOutputPath[gOutputPath.size() - 1] != TS_PATH_SEP_CHAR)
 	{
-		gOutputPath += XP_PATH_SEP_STR;
+        gOutputPath += TS_PATH_SEP_STR;
 	}
 
-	if (!xp_FileExists(gOutputPath))
+    if (!tsFileExists(gOutputPath.c_str()))
 	{
-		xp_CreateDirectory(gOutputPath, false);
+        tsCreateDirectory(gOutputPath.c_str(), false);
 	}
 	if (gExportPath.size() > 0)
 	{
-		if (!xp_FileExists(gExportPath))
+        if (!tsFileExists(gExportPath.c_str()))
 		{
-			xp_CreateDirectory(gExportPath, false);
+            tsCreateDirectory(gExportPath.c_str(), false);
 		}
 	}
 
 	try
 	{
-		for (int i = 0; i < args.FileCount(); i++)
+        for (int i = ts_get_optind(); i < argc; i++)
 		{
-			ProcessFile(args.File(i));
+            ProcessFile(argv[i]);
 		}
 	}
 	catch (std::exception& e)

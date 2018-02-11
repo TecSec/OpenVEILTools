@@ -90,9 +90,7 @@ public:
 	tsData(const_pointer data);
 	template <class InputIt>
 	tsData(InputIt first, InputIt last) :
-		m_data(nullptr),
-		m_used(0),
-		m_allocated(-1)
+		_data(tsCreateBuffer())
 	{
 		assign(first, last);
 	}
@@ -149,7 +147,7 @@ public:
 	size_type size() const;
 	size_type length() const;
 	size_type max_size() const;
-	_Post_satisfies_(this->m_data != nullptr) void reserve(size_type newSize = 0);
+	void reserve(size_type newSize = 0);
 	size_type capacity() const;
 	void clear();
 
@@ -175,9 +173,10 @@ public:
 	{
 		size_type oldsize = size();
 		resize(size() + (last - first));
+		uint8_t* ptr = rawData();
 		for (auto it = first; it != last; ++it)
 		{
-			m_data[oldsize++] = *it;
+			ptr[oldsize++] = *it;
 		}
 		return *this;
 	}
@@ -203,8 +202,8 @@ public:
 
 	tsData substr(size_type start = 0, size_type count = npos) const;
 	size_type copy(pointer dest, size_type count, size_type pos = 0) const;
-	_Post_satisfies_(this->m_data != nullptr) void resize(size_type newSize);
-	_Post_satisfies_(this->m_data != nullptr) void resize(size_type newSize, value_type value);
+	void resize(size_type newSize);
+	void resize(size_type newSize, value_type value);
 	void swap(tsData &obj);
 
 	size_type find(const tsData& str, size_type pos = 0) const;
@@ -324,14 +323,12 @@ public:
 	bool hasEncodingBOM() const;
 	bool hasEncodingBOM(uint8_t *data, uint32_t size) const;
 	uint32_t BOMByteCount() const;
-	uint32_t BOMByteCount(uint8_t *data, uint32_t size) const;
+	uint32_t BOMByteCount(const uint8_t *data, uint32_t size) const;
 	static tsData computeBOM(UnicodeEncodingType type);
 	tsData &prependBOM(UnicodeEncodingType type);
 
 protected:
-	uint8_t *m_data; ///< The allocated data buffer
-	size_type m_used; ///< The number of bytes in the array
-	difference_type m_allocated; ///< The number of bytes allocated for the array
+    mutable TSBYTE_BUFF _data;
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	/// <summary>Copies from the object specified in 'obj'.</summary>
 	///

@@ -52,7 +52,7 @@ class File
 public:
 	File(const tsStringBase &filename, const tsStringBase& language) : _language(language), stream(nullptr), _atStartOfLine(true)
 	{
-		if (fopen_s(&stream, filename.c_str(), "wt") != 0)
+		if (tsFOpen(&stream, filename.c_str(), "wt", tsShare_DenyWR) != 0)
 		{
 			printf("Unable to open file %s for output.\n", filename.c_str());
 			return;
@@ -62,7 +62,7 @@ public:
 	void Close()
 	{
 		_currentNamespace.reset();
-		fclose(stream);
+		tsCloseFile(stream);
 		stream = nullptr;
 	}
 	tsStringBase Language() const { return _language; }
@@ -80,7 +80,7 @@ public:
 		tsStringBase tmp;
 
 		if (_atStartOfLine && _indent.size() > 0)
-			fwrite(_indent.c_str(), 1, _indent.size(), stream);
+			tsWriteFile(_indent.c_str(), 1, (uint32_t)_indent.size(), stream);
 		_atStartOfLine = false;
 		data = data.Replace("\r\n", "\n");
 
@@ -92,23 +92,23 @@ public:
 			{
 				tmp.clear();
 				tmp.append(lines.at(i)).append('\n').append(_indent);
-				fwrite(tmp.c_str(), 1, tmp.size(), stream);
+				tsWriteFile(tmp.c_str(), 1, (uint32_t)tmp.size(), stream);
 			}
 			if (data.size() > 0 && data[data.size() - 1] == '\n')
 			{
 				tmp.clear();
 				tmp.append(lines.at(lines.size() - 1)).append('\n');
-				fwrite(tmp.c_str(), 1, tmp.size(), stream);
+				tsWriteFile(tmp.c_str(), 1, (uint32_t)tmp.size(), stream);
 				_atStartOfLine = true;
 			}
 			else
 			{
-				fwrite(lines.at(lines.size() - 1).c_str(), 1, lines.at(lines.size() - 1).size(), stream);
+				tsWriteFile(lines.at(lines.size() - 1).c_str(), 1, (uint32_t)lines.at(lines.size() - 1).size(), stream);
 			}
 		}
 		else
 		{
-			fwrite(data.c_str(), 1, data.size(), stream);
+			tsWriteFile(data.c_str(), 1, (uint32_t)data.size(), stream);
 		}
 	}
 	void WriteLine(const tsStringBase& _data)
@@ -119,16 +119,16 @@ public:
 		for (int i = 0; i < (int)lines.size(); i++)
 		{
 			if (_atStartOfLine && _indent.size() > 0)
-				fwrite(_indent.c_str(), 1, _indent.size(), stream);
+				tsWriteFile(_indent.c_str(), 1, (uint32_t)_indent.size(), stream);
 			_atStartOfLine = false;
-			fwrite(lines.at(i).c_str(), 1, lines.at(i).size(), stream);
-			fwrite("\n", 1, 1, stream);
+			tsWriteFile(lines.at(i).c_str(), 1, (uint32_t)lines.at(i).size(), stream);
+			tsWriteFile("\n", 1, 1, stream);
 			_atStartOfLine = true;
 		}
 	}
 	void WriteLine()
 	{
-		fwrite("\n", 1, 1, stream);
+		tsWriteFile("\n", 1, 1, stream);
 		_atStartOfLine = true;
 	}
 
@@ -157,7 +157,7 @@ public:
 protected:
 	tsStringBase _indent;
 	tsStringBase _language;
-	FILE* stream;
+	TSFILE stream;
 	bool _atStartOfLine;
 	tsStringBase _exportSymbol;
 	tsStringBase _templateExternSymbol;
@@ -590,18 +590,25 @@ protected:
 		if (file->Language() == "C++")
 		{
 			file->WriteLine("//");
-			file->WriteLine("// This file is the property of TecSec, Inc. (c) 2017 TecSec, Inc.");
+            file->WriteLine("// This file is the property of TecSec, Inc. (c) 2018 TecSec, Inc.");
 			file->WriteLine("// All rights are reserved to TecSec.");
 			file->WriteLine("//");
-			file->WriteLine("// The information in this file may be protected by one or more of the following");
-			file->WriteLine("// U.S. patents, as well as pending U.S. patent applications and foreign patents:");
-			file->WriteLine("// 5,369,702; 5,369,707; 5,375,169; 5,410,599; 5,432,851; 5,440,290; 5,680,452; ");
-			file->WriteLine("// 5,787,173; 5,898,781; 6,075,865; 6,229,445; 6,266,417; 6,490,680; 6,542,608; ");
-			file->WriteLine("// 6,549,623; 6,606,386; 6,608,901; 6,684,330; 6,694,433; 6,754,820; 6,845,453; ");
-			file->WriteLine("// 6,868,598; 7,016,495; 7,069,448; 7,079,653; 7,089,417; 7,095,851; 7,095,852; ");
-			file->WriteLine("// 7,111,173; 7,131,009; 7,178,030; 7,212,632; 7,490,240; 7,539,855; 7,738,660; ");
-			file->WriteLine("// 7,817,800; 7,974,410; 8,077,870; 8,083,808; 8,285,991; 8,308,820; 8,712,046. ");
+            file->WriteLine("// Licensed Technology is protected by U.S. copyright laws and international ");
+            file->WriteLine("// treaty provisions, as well as by issued U.S. patents and U.S. trade secret ");
+            file->WriteLine("// law. Licensee shall not copy the printed materials included in the Licensed ");
+            file->WriteLine("// Technology. TecSec owns all title and intellectual property in and to the ");
+            file->WriteLine("// total software product, including but not limited to any elements incorporated ");
+            file->WriteLine("// therein. No rights to ownership of any intellectual property are transferred ");
+            file->WriteLine("// by this Agreement.");
 			file->WriteLine("//");
+            file->WriteLine("//  This product is protected by one or more of the following U.S. patents, as ");
+            file->WriteLine("//  well as pending U.S. patent applications and foreign patents;  ");
+            file->WriteLine("//  6,490,680; 6,542,608; 6,549,623; 6,606,386; 6,608,901; 6,684,330; 6,694,433; ");
+            file->WriteLine("//  6,754,820; 6,694,433; 6,754,820; 6,845,453; 7,016,495; 7,079,653; 7,089,417; ");
+            file->WriteLine("//  7,095,851; 7,095,852; 7,111,173; 7,131,009; 7,490,240; 7,539,855;7,738,660; ");
+            file->WriteLine("//  7,817,800; 7,974,410; 8,077,870; 8,285,991; 8,712,046. ");
+            file->WriteLine("//");
+            file->WriteLine("// Written by Roger Butler, TecSec, Inc");
 			file->WriteLine();
 			file->WriteLine("// GENERATED FILE - Do not edit - Regenerate using Xml2Asn1CodeGenerator.exe");
 			file->WriteLine();
@@ -615,18 +622,25 @@ protected:
 		else
 		{
 			file->WriteLine("<!--");
-			file->WriteLine("This file is the property of TecSec, Inc. (c) 2017 TecSec, Inc.");
-			file->WriteLine("All rights are reserved to TecSec.");
-			file->WriteLine("");
-			file->WriteLine("The information in this file may be protected by one or more of the following");
-			file->WriteLine("U.S. patents, as well as pending U.S. patent applications and foreign patents:");
-			file->WriteLine("5,369,702; 5,369,707; 5,375,169; 5,410,599; 5,432,851; 5,440,290; 5,680,452; ");
-			file->WriteLine("5,787,173; 5,898,781; 6,075,865; 6,229,445; 6,266,417; 6,490,680; 6,542,608; ");
-			file->WriteLine("6,549,623; 6,606,386; 6,608,901; 6,684,330; 6,694,433; 6,754,820; 6,845,453; ");
-			file->WriteLine("6,868,598; 7,016,495; 7,069,448; 7,079,653; 7,089,417; 7,095,851; 7,095,852; ");
-			file->WriteLine("7,111,173; 7,131,009; 7,178,030; 7,212,632; 7,490,240; 7,539,855; 7,738,660; ");
-			file->WriteLine("7,817,800; 7,974,410; 8,077,870; 8,083,808; 8,285,991; 8,308,820; 8,712,046. ");
-			file->WriteLine("");
+            file->WriteLine("// This file is the property of TecSec, Inc. (c) 2018 TecSec, Inc.");
+            file->WriteLine("// All rights are reserved to TecSec.");
+            file->WriteLine("//");
+            file->WriteLine("// Licensed Technology is protected by U.S. copyright laws and international ");
+            file->WriteLine("// treaty provisions, as well as by issued U.S. patents and U.S. trade secret ");
+            file->WriteLine("// law. Licensee shall not copy the printed materials included in the Licensed ");
+            file->WriteLine("// Technology. TecSec owns all title and intellectual property in and to the ");
+            file->WriteLine("// total software product, including but not limited to any elements incorporated ");
+            file->WriteLine("// therein. No rights to ownership of any intellectual property are transferred ");
+            file->WriteLine("// by this Agreement.");
+            file->WriteLine("//");
+            file->WriteLine("//  This product is protected by one or more of the following U.S. patents, as ");
+            file->WriteLine("//  well as pending U.S. patent applications and foreign patents;  ");
+            file->WriteLine("//  6,490,680; 6,542,608; 6,549,623; 6,606,386; 6,608,901; 6,684,330; 6,694,433; ");
+            file->WriteLine("//  6,754,820; 6,694,433; 6,754,820; 6,845,453; 7,016,495; 7,079,653; 7,089,417; ");
+            file->WriteLine("//  7,095,851; 7,095,852; 7,111,173; 7,131,009; 7,490,240; 7,539,855;7,738,660; ");
+            file->WriteLine("//  7,817,800; 7,974,410; 8,077,870; 8,285,991; 8,712,046. ");
+            file->WriteLine("//");
+            file->WriteLine("// Written by Roger Butler, TecSec, Inc");
 			file->WriteLine();
 			file->WriteLine("GENERATED FILE - Do not edit - Regenerate using Xml2Asn1CodeGenerator.exe");
 			file->WriteLine("-->");

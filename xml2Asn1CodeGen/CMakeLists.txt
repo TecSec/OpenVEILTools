@@ -67,6 +67,10 @@ IF(WIN32)
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/xml2Asn1CodeGen.rc.in ${CMAKE_CURRENT_BINARY_DIR}/xml2Asn1CodeGen.rc)
     set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/xml2Asn1CodeGen.rc PROPERTIES COMPILE_DEFINITIONS RC_COMPILED)
     set(CppSources ${CppSources} ${CMAKE_CURRENT_BINARY_DIR}/xml2Asn1CodeGen.rc xml2Asn1CodeGen.rc.in)
+
+    CopyImportTargetBinariesToBuildFolder(CyberVEIL ${EXTRA_FILE_OUTPUT})
+    CopyImportTargetBinariesToBuildFolder(SQLite.cyberveil.db ${EXTRA_FILE_OUTPUT})
+
 ENDIF(WIN32)
 
 add_executable(xml2Asn1CodeGen 
@@ -103,6 +107,8 @@ add_executable(xml2Asn1CodeGen
     Nodes/ImportNode.h
 
 	${CppSources} 
+    ${soFilesToCopy}
+
 	${PUBLIC_SOURCE_TOP_DIR}/SolutionItems/xml2asn1codegen.xsd
 	)
 SOURCE_GROUP("Nodes" FILES
@@ -166,8 +172,19 @@ set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/xml2Asn1CodeGen.rc PROPE
 # SetCxxExeTargetProperties_sdk(xml2Asn1CodeGen)
 
 set_target_properties(xml2Asn1CodeGen PROPERTIES FOLDER "BuildTools")
-TARGET_LINK_LIBRARIES(xml2Asn1CodeGen 
+if(APPLE)
+	TARGET_LINK_LIBRARIES(xml2Asn1CodeGen 
     ToolsCore
-)
+		${CyberVEIL_TARGET}
+	)
+else()
+	TARGET_LINK_LIBRARIES(xml2Asn1CodeGen 
+		ToolsCore
+		CyberVEIL
+	)
+endif(APPLE)
 
 install(TARGETS xml2Asn1CodeGen ARCHIVE DESTINATION ${LIB_DIR} LIBRARY DESTINATION ${SHLIB_DIR} RUNTIME DESTINATION ${BIN_DIR})
+if (WIN32 AND ${CMAKE_BUILD_TYPE} STREQUAL "Release" AND ${TS_X_PLATFORM} STREQUAL "x64" AND EXISTS "c:/utils")
+install(TARGETS xml2Asn1CodeGen RUNTIME DESTINATION "c:/utils")
+endif(WIN32 AND ${CMAKE_BUILD_TYPE} STREQUAL "Release" AND ${TS_X_PLATFORM} STREQUAL "x64" AND EXISTS "c:/utils")

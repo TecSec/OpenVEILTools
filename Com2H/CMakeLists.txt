@@ -48,7 +48,7 @@ add_executable(Com2H
 # add_precompiled_header(Com2H stdafx.h FORCEINCLUDE SOURCE_CXX stdafx.cpp)
 # add_dependencies(Com2H toolsBase)
 # SetCxxExeTargetProperties_sdk(Com2H)
-set_target_properties(Com2H PROPERTIES FOLDER "GeneralTools")
+set_target_properties(Com2H PROPERTIES FOLDER "BuildTools")
 set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/com2h.rc PROPERTIES COMPILE_DEFINITIONS RC_COMPILED)
 TARGET_LINK_LIBRARIES(Com2H 
 	ToolsCore

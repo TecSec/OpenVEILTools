@@ -47,12 +47,12 @@ bool ImportNode::ReadText(const tsStringBase& filename, const tsStringBase& path
 	if (path.size() > 0)
 	{
 #ifdef _WIN32
-		if (filename[1] == ':' || filename[0] == XP_PATH_SEP_CHAR)
+		if (filename[1] == ':' || filename[0] == TS_PATH_SEP_CHAR)
 		{
 			return false;
 		}
 #else
-		if (filename[0] == XP_PATH_SEP_CHAR)
+		if (filename[0] == TS_PATH_SEP_CHAR)
 		{
 			return false;
 		}
